@@ -62,15 +62,15 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 3 — OCR via Vision
 
-- [ ] `Services/OCRService.swift`
-- [ ] Méthode `func recognizeText(in image: CGImage) async throws -> String`
+- [x] `Services/OCRService.swift`
+- [x] Méthode `func recognizeText(in image: CGImage) async throws -> String`
   - `VNRecognizeTextRequest`
   - `automaticallyDetectsLanguage = true` (en dur)
   - `usesLanguageCorrection = true` (en dur)
   - `recognitionLevel = .accurate`
   - Joindre les `VNRecognizedTextObservation` avec `\n` dans l'ordre vertical
-- [ ] Enum `OCRError`: `noTextFound`, `visionFailed(Error)`
-- [ ] Test unitaire avec une image fixture contenant du texte connu
+- [x] Enum `OCRError`: `noTextFound`, `visionFailed(Error)`
+- [ ] Test unitaire avec une image fixture contenant du texte connu *(reporté en Phase 10 — la target de tests n'existe pas encore ; validation manuelle via le bouton debug)*
 
 ## Phase 4 — Écriture dans le presse-papier
 
@@ -172,9 +172,9 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 3 — OCR via Vision.
+**Phase en cours** : Phase 4 — Écriture dans le presse-papier.
 
-**Dernière phase complétée** : Phase 2 — Capture d'écran via CLI. `Services/ScreenCaptureService.swift` lance `/usr/sbin/screencapture -i -c` via `Process`, détecte l'annulation utilisateur via `NSPasteboard.changeCount`, relit l'image (TIFF ou PNG) depuis le presse-papier et la décode en `CGImage`. Un bouton « Debug : tester la capture » dans le menu bar affiche les dimensions via `NSAlert`. Build OK (`BUILD SUCCEEDED`).
+**Dernière phase complétée** : Phase 3 — OCR via Vision. `Services/OCRService.swift` encapsule un `VNRecognizeTextRequest` (`.accurate`, `automaticallyDetectsLanguage`, `usesLanguageCorrection` à `true`), exécuté sur une queue globale via `withCheckedThrowingContinuation`. Les `VNRecognizedTextObservation` sont triées par `boundingBox.midY` décroissant (origine bottom-left de Vision → haut = midY max) puis jointes avec `\n`. Le bouton « Debug : tester la capture + OCR » enchaîne capture → OCR et affiche le texte dans une `NSAlert`. Build OK (`BUILD SUCCEEDED`).
 
 **Notes / décisions en cours de route** :
 
@@ -188,3 +188,5 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - Le bouton « Debug : tester la capture » est temporaire — il sera retiré en Phase 4 quand le vrai bouton « Capturer une zone » sera câblé au `CaptureCoordinator`.
 - `stderr` de `screencapture` capturé via `Pipe` → distingue annulation utilisateur (stderr vide) d'un échec réel (`CaptureError.screenCaptureFailed`).
 - `DEVELOPMENT_TEAM = 7C2S8B9978` dans `project.pbxproj` (Debug & Release) → signature stable entre les rebuilds, indispensable pour que TCC conserve la permission Enregistrement d'écran en dev.
+- `OCRService` : tri vertical via `boundingBox.midY` décroissant — Vision utilise des coordonnées normalisées avec origine en bas-gauche, donc un `midY` élevé correspond au haut de l'image. Exécution du `VNImageRequestHandler.perform` sur `DispatchQueue.global(.userInitiated)` pour ne pas bloquer l'appelant ; `VNRecognizedTextObservation` vide → `OCRError.noTextFound`.
+- Test unitaire du Phase 3 reporté en Phase 10 : la target `OCRSelectionTests` n'existe pas encore. Validation manuelle via le bouton debug suffisante pour le MVP.

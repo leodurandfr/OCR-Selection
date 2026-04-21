@@ -11,7 +11,7 @@ struct OCRSelectionApp: App {
 
             Divider()
 
-            Button("Debug : tester la capture") {
+            Button("Debug : tester la capture + OCR") {
                 Task { await runCaptureDebug() }
             }
 
@@ -37,13 +37,15 @@ struct OCRSelectionApp: App {
     }
 
     private func runCaptureDebug() async {
-        let service = ScreenCaptureService()
+        let capture = ScreenCaptureService()
+        let ocr = OCRService()
         do {
-            let image = try await service.captureRegion()
+            let image = try await capture.captureRegion()
+            let text = try await ocr.recognizeText(in: image)
             await MainActor.run {
                 showDebugAlert(
-                    title: "Capture réussie",
-                    message: "Dimensions : \(image.width) × \(image.height) px"
+                    title: "OCR réussi",
+                    message: "Image : \(image.width) × \(image.height) px\n\nTexte :\n\(text)"
                 )
             }
         } catch CaptureError.userCancelled {
@@ -56,6 +58,14 @@ struct OCRSelectionApp: App {
                     title: "Échec de la capture",
                     message: "screencapture a échoué. Vérifier la permission Enregistrement d'écran.\n\nDétails :\n\(details)"
                 )
+            }
+        } catch OCRError.noTextFound {
+            await MainActor.run {
+                showDebugAlert(title: "Aucun texte détecté", message: "Vision n'a trouvé aucun texte dans la zone capturée.")
+            }
+        } catch OCRError.visionFailed(let underlying) {
+            await MainActor.run {
+                showDebugAlert(title: "Échec OCR", message: String(describing: underlying))
             }
         } catch {
             await MainActor.run {
