@@ -37,16 +37,16 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 1 — Scaffold barre de menu
 
-- [ ] `OCRSelectionApp.swift` : `@main` avec `MenuBarExtra`
-- [ ] Icône SF Symbol : `text.viewfinder` (style `.titleBarExtraStyle`)
-- [ ] Menu statique :
+- [x] `OCRSelectionApp.swift` : `@main` avec `MenuBarExtra`
+- [x] Icône SF Symbol : `text.viewfinder` (style `.titleBarExtraStyle`)
+- [x] Menu statique :
   - Bouton « Capturer une zone » (désactivé pour l'instant, juste l'entrée)
   - Divider
   - Bouton « Préférences… » (ouvre `Settings` scene vide pour l'instant)
   - Divider
   - Bouton « Quitter OCR Selection » (`NSApplication.shared.terminate`)
-- [ ] `Settings` scene vide (placeholder `Text("Préférences")`)
-- [ ] Lancer : le menu s'ouvre au clic, Quitter fonctionne
+- [x] `Settings` scene vide (placeholder `Text("Préférences")`)
+- [x] Lancer : le menu s'ouvre au clic, Quitter fonctionne
 
 ## Phase 2 — Capture d'écran via CLI
 
@@ -172,13 +172,15 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 1 — Scaffold barre de menu.
+**Phase en cours** : Phase 2 — Capture d'écran via CLI.
 
-**Dernière phase complétée** : Phase 0 — Setup du projet Xcode. Build OK (`xcodebuild … build` → `BUILD SUCCEEDED`). Bundle `OCRSelection.app` produit avec `LSUIElement=true`, copyright, category et bundle ID vérifiés via PlistBuddy.
+**Dernière phase complétée** : Phase 1 — Scaffold barre de menu. `OCRSelectionApp.swift` contient le `MenuBarExtra` (icône `text.viewfinder`, style `.menu`) avec « Capturer une zone » (disabled), « Préférences… » (via `SettingsLink`, ⌘,), « Quitter OCR Selection » (⌘Q), plus une `Settings` scene avec une vue placeholder 480×260. Build OK (`BUILD SUCCEEDED`).
 
 **Notes / décisions en cours de route** :
 
 - `project.pbxproj` construit à la main en utilisant `PBXFileSystemSynchronizedRootGroup` (Xcode 16+ / objectVersion 77) : les fichiers sous `OCRSelection/` sont automatiquement inclus dans la target, pas besoin de les lister un par un. Ajouter un nouveau fichier = juste créer le fichier.
 - `Info.plist` auto-généré via `GENERATE_INFOPLIST_FILE = YES` + clés `INFOPLIST_KEY_*`. Pas de `Info.plist` manuel.
 - Entitlements actuels : uniquement `com.apple.security.app-sandbox = false` (cf. Phase 12 pour réactivation).
-- `OCRSelectionApp.swift` déjà posé comme placeholder `MenuBarExtra` minimal avec un bouton Quitter — sera enrichi en Phase 1.
+- Ouverture de la fenêtre Préférences via `SettingsLink` (macOS 14+) — pas besoin de `@Environment(\.openSettings)` ni de gymnastique `NSApp.activate`.
+- Chaînes UI en français en dur pour le moment ; la localisation EN/FR/ES arrive en Phase 6 via String Catalog.
+- `xcodebuild` nécessite `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (la CLI pointe par défaut sur les Command Line Tools).
