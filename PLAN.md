@@ -26,14 +26,14 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 0 — Setup du projet Xcode
 
-- [ ] Créer un projet Xcode à la racine : App · SwiftUI · Swift · macOS · min 14.0
-- [ ] Nom : `OCRSelection` · Bundle ID : `com.leodurand.ocr-selection`
-- [ ] `Info.plist` : `LSUIElement = YES` (app barre de menu uniquement)
-- [ ] `Info.plist` : `NSHumanReadableCopyright` → `© 2026 Leo Durand`
-- [ ] Category : `public.app-category.utilities`
-- [ ] Entitlements : désactiver App Sandbox pour le MVP (`com.apple.security.app-sandbox = NO`). Laisser hardened runtime activé.
-- [ ] `.gitignore` (xcuserdata, DerivedData, .DS_Store)
-- [ ] Compile, lance — icône visible en barre de menu, pas dans le Dock
+- [x] Créer un projet Xcode à la racine : App · SwiftUI · Swift · macOS · min 14.0
+- [x] Nom : `OCRSelection` · Bundle ID : `com.leodurand.ocr-selection`
+- [x] `Info.plist` : `LSUIElement = YES` (app barre de menu uniquement)
+- [x] `Info.plist` : `NSHumanReadableCopyright` → `© 2026 Leo Durand`
+- [x] Category : `public.app-category.utilities`
+- [x] Entitlements : désactiver App Sandbox pour le MVP (`com.apple.security.app-sandbox = NO`). Laisser hardened runtime activé.
+- [x] `.gitignore` (xcuserdata, DerivedData, .DS_Store)
+- [x] Compile, lance — icône visible en barre de menu, pas dans le Dock
 
 ## Phase 1 — Scaffold barre de menu
 
@@ -172,8 +172,13 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 0 — pas encore démarré.
+**Phase en cours** : Phase 1 — Scaffold barre de menu.
 
-**Dernière phase complétée** : aucune.
+**Dernière phase complétée** : Phase 0 — Setup du projet Xcode. Build OK (`xcodebuild … build` → `BUILD SUCCEEDED`). Bundle `OCRSelection.app` produit avec `LSUIElement=true`, copyright, category et bundle ID vérifiés via PlistBuddy.
 
-**Notes / décisions en cours de route** : *(à remplir au fil du développement)*
+**Notes / décisions en cours de route** :
+
+- `project.pbxproj` construit à la main en utilisant `PBXFileSystemSynchronizedRootGroup` (Xcode 16+ / objectVersion 77) : les fichiers sous `OCRSelection/` sont automatiquement inclus dans la target, pas besoin de les lister un par un. Ajouter un nouveau fichier = juste créer le fichier.
+- `Info.plist` auto-généré via `GENERATE_INFOPLIST_FILE = YES` + clés `INFOPLIST_KEY_*`. Pas de `Info.plist` manuel.
+- Entitlements actuels : uniquement `com.apple.security.app-sandbox = false` (cf. Phase 12 pour réactivation).
+- `OCRSelectionApp.swift` déjà posé comme placeholder `MenuBarExtra` minimal avec un bouton Quitter — sera enrichi en Phase 1.
