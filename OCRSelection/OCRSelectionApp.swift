@@ -51,7 +51,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 private struct MenuBarContent: View {
-    @Environment(\.modelContext) private var modelContext
     @Query(sort: \OCREntry.createdAt, order: .reverse) private var entries: [OCREntry]
 
     let coordinator: CaptureCoordinator
@@ -72,9 +71,6 @@ private struct MenuBarContent: View {
                         Text(verbatim: Self.menuLabel(for: entry))
                     }
                 }
-                Button("Clear History") {
-                    clearHistory()
-                }
             }
         }
 
@@ -91,11 +87,6 @@ private struct MenuBarContent: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
-    }
-
-    private func clearHistory() {
-        try? modelContext.delete(model: OCREntry.self)
-        try? modelContext.save()
     }
 
     private static func menuLabel(for entry: OCREntry) -> String {
