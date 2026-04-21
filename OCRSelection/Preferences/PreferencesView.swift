@@ -11,13 +11,14 @@ struct PreferencesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             generalSection
-            Divider()
+            sectionDivider
             shortcutSection
-            Divider()
+            sectionDivider
             historySection
-            Divider()
+            sectionDivider
             aboutSection
         }
+        .padding(20)
         .frame(width: 480)
         .fixedSize(horizontal: false, vertical: true)
         .onAppear {
@@ -26,6 +27,10 @@ struct PreferencesView: View {
         .onChange(of: launchAtLogin) { _, newValue in
             updateLoginItem(enabled: newValue)
         }
+    }
+
+    private var sectionDivider: some View {
+        Divider().padding(.vertical, 12)
     }
 
     private var generalSection: some View {
@@ -99,8 +104,12 @@ struct PreferencesView: View {
                 .font(.headline)
             content()
         }
-        .padding(20)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
     }
 
     private var sliderBinding: Binding<Double> {
