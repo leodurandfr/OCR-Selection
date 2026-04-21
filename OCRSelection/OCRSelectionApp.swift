@@ -11,6 +11,12 @@ struct OCRSelectionApp: App {
 
             Divider()
 
+            Button("Debug : tester la capture") {
+                Task { await runCaptureDebug() }
+            }
+
+            Divider()
+
             SettingsLink {
                 Text("Préférences…")
             }
@@ -28,6 +34,36 @@ struct OCRSelectionApp: App {
         Settings {
             PreferencesView()
         }
+    }
+
+    private func runCaptureDebug() async {
+        let service = ScreenCaptureService()
+        do {
+            let image = try await service.captureRegion()
+            await MainActor.run {
+                showDebugAlert(
+                    title: "Capture réussie",
+                    message: "Dimensions : \(image.width) × \(image.height) px"
+                )
+            }
+        } catch CaptureError.userCancelled {
+            await MainActor.run {
+                showDebugAlert(title: "Capture annulée", message: "L'utilisateur a appuyé sur Échap.")
+            }
+        } catch {
+            await MainActor.run {
+                showDebugAlert(title: "Erreur", message: String(describing: error))
+            }
+        }
+    }
+
+    @MainActor
+    private func showDebugAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .informational
+        alert.runModal()
     }
 }
 
