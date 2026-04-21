@@ -82,14 +82,14 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 5 — Notifications
 
-- [ ] `Services/NotificationService.swift`
-- [ ] Demander la permission `UNUserNotificationCenter` au premier lancement (`applicationDidFinishLaunching`)
-- [ ] Notification de succès : titre « Texte copié », corps = aperçu du texte (50 premiers caractères)
-- [ ] Notification d'erreur selon le cas :
+- [x] `Services/NotificationService.swift`
+- [x] Demander la permission `UNUserNotificationCenter` au premier lancement (`applicationDidFinishLaunching`)
+- [x] Notification de succès : titre « Texte copié », corps = aperçu du texte (50 premiers caractères)
+- [x] Notification d'erreur selon le cas :
   - « Aucun texte détecté » (OCR vide)
   - « Capture annulée » — on choisit de ne PAS notifier si l'utilisateur fait Échap (silence attendu)
   - « Erreur lors de la capture » (autres erreurs)
-- [ ] Intégrer dans `CaptureCoordinator`
+- [x] Intégrer dans `CaptureCoordinator`
 
 ## Phase 6 — Localisation EN / FR / ES
 
@@ -172,9 +172,9 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 5 — Notifications.
+**Phase en cours** : Phase 6 — Localisation EN / FR / ES.
 
-**Dernière phase complétée** : Phase 4 — Écriture dans le presse-papier. `Services/PasteboardService.swift` expose `copyText(_:)` (`clearContents()` + `setString(_:forType: .string)`). `CaptureCoordinator.swift` (niveau app, hors `Services/`) orchestre `capture → OCR → paste` via une unique méthode `run() async throws`. Le bouton « Capturer une zone » du `MenuBarExtra` est câblé à `coordinator.run()` dans un `Task`. Le bouton debug temporaire et les helpers `NSAlert` ont été retirés. Gestion d'erreur minimale : `CaptureError.userCancelled` silencieux (Échap utilisateur attendu), tout autre throw → `NSLog` en attendant les notifications (Phase 5). Build OK (`BUILD SUCCEEDED`).
+**Dernière phase complétée** : Phase 5 — Notifications. `Services/NotificationService.swift` expose `requestAuthorization()`, `notifySuccess(preview:)`, `notifyNoText()`, `notifyFailure()` — chaque livraison crée un `UNNotificationRequest` avec `trigger: nil` (affichage immédiat). `AppDelegate` (via `@NSApplicationDelegateAdaptor` dans `OCRSelectionApp`) déclenche la demande de permission `[.alert, .sound]` dans `applicationDidFinishLaunching`. `CaptureCoordinator.run()` devient `async` (non throwing) et gère les trois branches : succès → `notifySuccess`, `OCRError.noTextFound` → `notifyNoText`, `CaptureError.userCancelled` → silence, tout autre throw → `notifyFailure` + `NSLog`. L'aperçu de 50 caractères remplace les sauts de ligne par des espaces et tronque avec « … ». Build OK (`BUILD SUCCEEDED`).
 
 **Notes / décisions en cours de route** :
 
@@ -191,3 +191,6 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - Test unitaire du Phase 3 reporté en Phase 10 : la target `OCRSelectionTests` n'existe pas encore. Validation manuelle via le bouton debug suffisante pour le MVP.
 - `CaptureCoordinator` placé à la racine de `OCRSelection/` (et non sous `Services/`) : il orchestre les services mais n'en est pas un. Instance unique détenue par `OCRSelectionApp` (`let coordinator = CaptureCoordinator()`) — Phase 8 réutilisera cette même instance pour le raccourci global.
 - Phase 4 : feedback utilisateur volontairement absent (pas d'alerte de succès, `NSLog` sur erreurs) — les notifications système arrivent en Phase 5 et remplaceront les `NSLog`. `CaptureError.userCancelled` reste silencieux de manière permanente (silence attendu sur Échap, cf. Phase 5 du plan).
+- Phase 5 : `CaptureCoordinator.run()` n'est plus `throws` — il avale les erreurs lui-même après avoir déclenché la notification appropriée. L'appelant (bouton menu, bientôt raccourci global Phase 8) n'a plus à gérer de `catch`. `NSLog` conservé en plus de `notifyFailure()` pour le debug Console.app.
+- Phase 5 : corps d'aperçu nettoyé (newlines → espaces, trim) et tronqué à 50 caractères + « … » — garde la notification système lisible sans débordement visuel.
+- Phase 5 : `UNUserNotificationCenter.requestAuthorization` appelée via un `Task` depuis `applicationDidFinishLaunching` plutôt qu'à l'init du coordinateur → respecte la formulation du plan et centralise le cycle de vie app-level dans l'`AppDelegate`.

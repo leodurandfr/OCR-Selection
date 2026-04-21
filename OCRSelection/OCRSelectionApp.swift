@@ -2,12 +2,13 @@ import SwiftUI
 
 @main
 struct OCRSelectionApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let coordinator = CaptureCoordinator()
 
     var body: some Scene {
         MenuBarExtra("OCR Selection", systemImage: "text.viewfinder") {
             Button("Capturer une zone") {
-                Task { await runCapture() }
+                Task { await coordinator.run() }
             }
 
             Divider()
@@ -30,16 +31,13 @@ struct OCRSelectionApp: App {
             PreferencesView()
         }
     }
+}
 
-    private func runCapture() async {
-        do {
-            try await coordinator.run()
-        } catch CaptureError.userCancelled {
-            // Silence attendu quand l'utilisateur appuie sur Échap.
-        } catch {
-            // Les retours utilisateur (succès + erreurs) sont câblés en Phase 5 via UNUserNotificationCenter.
-            NSLog("OCR Selection capture failed: %@", String(describing: error))
-        }
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let notifications = NotificationService()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Task { await notifications.requestAuthorization() }
     }
 }
 
