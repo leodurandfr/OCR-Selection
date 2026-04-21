@@ -9,68 +9,76 @@ struct PreferencesView: View {
     @State private var launchAtLogin = false
 
     var body: some View {
-        Form {
-            Section("General") {
-                Toggle("Launch at login", isOn: $launchAtLogin)
-                    .help(Text("Start OCR Selection automatically when you log in."))
-            }
-
-            sectionDivider
-
-            Section("Shortcut") {
-                LabeledContent("Capture Area") {
-                    KeyboardShortcuts.Recorder(for: .captureRegion)
-                }
-                .help(Text("Global keyboard shortcut to start a capture from anywhere."))
-                HStack {
-                    Spacer()
-                    Button("Reset to Default") {
-                        KeyboardShortcuts.reset(.captureRegion)
-                    }
-                    .help(Text("Restore the default shortcut (⌘⇧2)."))
+        VStack(spacing: 0) {
+            groupedSection {
+                Section("General") {
+                    Toggle("Launch at login", isOn: $launchAtLogin)
+                        .help(Text("Start OCR Selection automatically when you log in."))
                 }
             }
 
             sectionDivider
 
-            Section("History") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Entries kept: \(maxCount)")
-                    Slider(value: sliderBinding, in: 10...50, step: 5) {
-                        Text("Entries kept")
-                    } minimumValueLabel: {
-                        Text(verbatim: "10")
-                    } maximumValueLabel: {
-                        Text(verbatim: "50")
+            groupedSection {
+                Section("Shortcut") {
+                    LabeledContent("Capture Area") {
+                        KeyboardShortcuts.Recorder(for: .captureRegion)
                     }
-                    .labelsHidden()
-                    .accessibilityLabel(Text("Entries kept"))
-                    .accessibilityValue(Text("\(maxCount)"))
-                    .help(Text("Maximum number of captures kept in history."))
-                }
-                HStack {
-                    Spacer()
-                    Button("Clear History", role: .destructive) {
-                        clearHistory()
+                    .help(Text("Global keyboard shortcut to start a capture from anywhere."))
+                    HStack {
+                        Spacer()
+                        Button("Reset to Default") {
+                            KeyboardShortcuts.reset(.captureRegion)
+                        }
+                        .help(Text("Restore the default shortcut (⌘⇧2)."))
                     }
-                    .help(Text("Remove all captures from history."))
                 }
             }
 
             sectionDivider
 
-            Section("About") {
-                LabeledContent {
-                    Link(destination: URL(string: "https://leodurand.com")!) {
-                        Text(verbatim: "leodurand.com")
+            groupedSection {
+                Section("History") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Entries kept: \(maxCount)")
+                        Slider(value: sliderBinding, in: 10...50, step: 5) {
+                            Text("Entries kept")
+                        } minimumValueLabel: {
+                            Text(verbatim: "10")
+                        } maximumValueLabel: {
+                            Text(verbatim: "50")
+                        }
+                        .labelsHidden()
+                        .accessibilityLabel(Text("Entries kept"))
+                        .accessibilityValue(Text("\(maxCount)"))
+                        .help(Text("Maximum number of captures kept in history."))
                     }
-                } label: {
-                    Text("Designed by")
+                    HStack {
+                        Spacer()
+                        Button("Clear History", role: .destructive) {
+                            clearHistory()
+                        }
+                        .help(Text("Remove all captures from history."))
+                    }
+                }
+            }
+
+            sectionDivider
+
+            groupedSection {
+                Section("About") {
+                    LabeledContent {
+                        Link(destination: URL(string: "https://leodurand.com")!) {
+                            Text(verbatim: "leodurand.com")
+                        }
+                    } label: {
+                        Text("Designed by")
+                    }
                 }
             }
         }
-        .formStyle(.grouped)
-        .frame(width: 480, height: 500)
+        .frame(width: 480)
+        .fixedSize(horizontal: false, vertical: true)
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
@@ -80,9 +88,17 @@ struct PreferencesView: View {
     }
 
     private var sectionDivider: some View {
-        Divider()
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets())
+        Divider().padding(.horizontal, 20)
+    }
+
+    @ViewBuilder
+    private func groupedSection<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        Form {
+            content()
+        }
+        .formStyle(.grouped)
+        .scrollDisabled(true)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var sliderBinding: Binding<Double> {
