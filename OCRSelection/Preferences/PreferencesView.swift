@@ -1,5 +1,6 @@
 import KeyboardShortcuts
 import ServiceManagement
+import SwiftData
 import SwiftUI
 
 struct PreferencesView: View {
@@ -70,9 +71,41 @@ private struct ShortcutSettingsView: View {
 }
 
 private struct HistorySettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+    @AppStorage("historyMaxCount") private var maxCount: Int = 30
+
+    private var sliderBinding: Binding<Double> {
+        Binding(
+            get: { Double(maxCount) },
+            set: { maxCount = Int($0) }
+        )
+    }
+
     var body: some View {
-        Text(verbatim: "History settings — coming in Phase 9")
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Entries kept: \(maxCount)")
+                    Slider(value: sliderBinding, in: 10...50, step: 5) {
+                        Text("Entries kept")
+                    } minimumValueLabel: {
+                        Text(verbatim: "10")
+                    } maximumValueLabel: {
+                        Text(verbatim: "50")
+                    }
+                    .labelsHidden()
+                }
+            }
+
+            Button("Clear History", role: .destructive) {
+                clearHistory()
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func clearHistory() {
+        try? modelContext.delete(model: OCREntry.self)
+        try? modelContext.save()
     }
 }

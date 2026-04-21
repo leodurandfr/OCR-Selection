@@ -124,17 +124,17 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 9 — Historique avec SwiftData
 
-- [ ] `Models/OCREntry.swift` : `@Model` avec `id: UUID`, `text: String`, `createdAt: Date`
-- [ ] `ModelContainer` injecté via `.modelContainer(for: OCREntry.self)` dans `OCRSelectionApp`
-- [ ] Sauvegarder dans `CaptureCoordinator` après chaque OCR réussi (ne rien sauvegarder si texte vide)
-- [ ] `HistoryService.swift` : enforcement du cap (supprimer les plus anciennes au-delà de N)
-- [ ] `@AppStorage("historyMaxCount")` avec défaut 30
-- [ ] Menu bar : section « Récents » listant les N dernières entrées
+- [x] `Models/OCREntry.swift` : `@Model` avec `id: UUID`, `text: String`, `createdAt: Date`
+- [x] `ModelContainer` injecté via `.modelContainer(for: OCREntry.self)` dans `OCRSelectionApp`
+- [x] Sauvegarder dans `CaptureCoordinator` après chaque OCR réussi (ne rien sauvegarder si texte vide)
+- [x] `HistoryService.swift` : enforcement du cap (supprimer les plus anciennes au-delà de N)
+- [x] `@AppStorage("historyMaxCount")` avec défaut 30
+- [x] Menu bar : section « Récents » listant les N dernières entrées
   - Chaque ligne : aperçu tronqué (40 chars) + heure relative (il y a X min)
   - Clic = recopie le texte complet dans le presse-papier + notification
   - Limite d'affichage dans le menu : 10 entrées max (scroll sinon)
   - Bouton « Effacer l'historique » en bas de la liste
-- [ ] Onglet **Historique** :
+- [x] Onglet **Historique** :
   - `Slider(value: maxCount, in: 10...50, step: 5)` + label dynamique
   - Bouton destructif « Effacer l'historique »
 
@@ -172,9 +172,9 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 9 — Historique avec SwiftData.
+**Phase en cours** : Phase 10 — Tests unitaires.
 
-**Dernière phase complétée** : Phase 8 — Raccourci global. Package SPM `sindresorhus/KeyboardShortcuts` 2.4.0 (upToNextMajorVersion) ajouté manuellement au `project.pbxproj` : sections `PBXBuildFile`, `XCRemoteSwiftPackageReference`, `XCSwiftPackageProductDependency` créées + `packageReferences`/`packageProductDependencies`/Frameworks build phase mis à jour. Nouveau `OCRSelection/KeyboardShortcuts+Names.swift` : `extension KeyboardShortcuts.Name { static let captureRegion = Self("captureRegion", default: .init(.two, modifiers: [.command, .shift])) }`. `OCRSelectionApp.swift` refactoré : `CaptureCoordinator` déplacé sur `AppDelegate` (propriété `let coordinator`) pour partager l'instance entre le menu bar et le handler global ; `applicationDidFinishLaunching` enregistre `KeyboardShortcuts.onKeyUp(for: .captureRegion) { [coordinator] in Task { await coordinator.run() } }`. Le bouton « Capture Area » du menu appelle désormais `appDelegate.coordinator.run()`. `ShortcutSettingsView` : `Form` avec `LabeledContent("Capture Area") { KeyboardShortcuts.Recorder(for: .captureRegion) }` + `Button("Reset to Default") { KeyboardShortcuts.reset(.captureRegion) }`. 1 clé ajoutée au catalogue : `Reset to Default` (EN/FR/ES). Build OK (`BUILD SUCCEEDED`).
+**Dernière phase complétée** : Phase 9 — Historique avec SwiftData. Nouveau `OCRSelection/Models/OCREntry.swift` : `@Model final class OCREntry` avec `id: UUID`, `text: String`, `createdAt: Date`. Nouveau `OCRSelection/Services/HistoryService.swift` (`@MainActor struct`) prenant un `ModelContainer` — `record(_:)` insère une entrée puis appelle `prune(in:)` qui lit le cap via `UserDefaults.standard.integer(forKey: "historyMaxCount")` et `context.delete` les entrées au-delà ; `clear()` fait un `context.delete(model: OCREntry.self)` global. `CaptureCoordinator` : nouvelle dépendance `let history: HistoryService`, appelle `await history.record(text)` après un OCR réussi (skip si texte trim vide), nouvelle méthode `recopy(_ text:)` = copy + `notifySuccess` utilisée depuis les entrées du menu. `AppDelegate` (marqué `@MainActor`) : crée le `ModelContainer(for: OCREntry.self)` dans `init()`, construit le `CaptureCoordinator` avec `HistoryService(container:)`, et enregistre `UserDefaults.standard.register(defaults: ["historyMaxCount": 30])` au plus tôt. `OCRSelectionApp` : le contenu `MenuBarExtra` est extrait dans une view privée `MenuBarContent` (`@Query(sort: \OCREntry.createdAt, order: .reverse)`) avec une section `Section("Recents")` limitée à `entries.prefix(10)` — chaque ligne affiche `"<preview 40 chars> — <relative time named>"` via `Date.formatted(.relative(presentation: .named))` et `Text(verbatim:)` (pas de pollution du catalogue), clic = `coordinator.recopy(text)` ; bouton `"Clear History"` sous la liste. Le container est injecté avec `.modelContainer(appDelegate.container)` sur chaque scene (MenuBarExtra + Settings). Nouvel onglet Historique `HistorySettingsView` : `Form` avec un `Slider(value: Binding<Double>, in: 10...50, step: 5)` + label dynamique `Text("Entries kept: \(maxCount)")` (via `@AppStorage("historyMaxCount") var maxCount: Int = 30`) + bouton destructif `Button("Clear History", role: .destructive)`. 3 clés ajoutées au catalogue : `Recents`, `Clear History`, `Entries kept: %lld` (EN/FR/ES). Build OK (`BUILD SUCCEEDED`).
 
 **Notes / décisions en cours de route** :
 
@@ -200,3 +200,8 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - Phase 8 : SPM ajouté manuellement au `project.pbxproj` (pas d'UI Xcode dispo en mode CLI) — 3 nouvelles sections (`XCRemoteSwiftPackageReference`, `XCSwiftPackageProductDependency`, `PBXBuildFile`) + mises à jour de `packageReferences` (PBXProject), `packageProductDependencies` (PBXNativeTarget) et du Frameworks build phase. `Package.resolved` vit dans `*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/` — déjà ignoré par `.gitignore` (cohérent avec une app solo : chaque checkout re-résout).
 - Phase 8 : `CaptureCoordinator` déplacé de `OCRSelectionApp` (struct) vers `AppDelegate` (classe). Raison : le handler `KeyboardShortcuts.onKeyUp` doit s'enregistrer après `applicationDidFinishLaunching` (sinon le moniteur d'événements NSEvent peut être installé avant que le run loop soit prêt), et il faut que le menu bar et le handler global partagent la *même* instance. Alternative écartée : `init()` de la struct App — appelée trop tôt pour enregistrer un monitor système. Référence via `appDelegate.coordinator` dans le body SwiftUI (l'adaptor `@NSApplicationDelegateAdaptor` garantit que l'AppDelegate existe avant le premier rendu du body).
 - Phase 8 : l'API `KeyboardShortcuts.Recorder` a deux overloads — `init(_ title:, name:)` et `init(for:)`. On utilise `Recorder(for: .captureRegion)` dans un `LabeledContent("Capture Area") { … }` pour que le label suive automatiquement la taille du Form macOS (aligné à gauche, recorder aligné à droite), au lieu du label intégré du Recorder qui n'a pas le même comportement dans `.grouped`. Même rendu visuel, plus cohérent avec le reste des préférences.
+- Phase 9 : `AppDelegate` marqué `@MainActor` et passé de `init()` par défaut à un `override init()` explicite pour créer le `ModelContainer` et construire le `CaptureCoordinator` avec sa dépendance `HistoryService`. Cohérent avec le fait que `ModelContainer.mainContext` est main-actor-bound et que les delegate callbacks AppKit sont appelés sur le main thread. `@NSApplicationDelegateAdaptor` instancie l'AppDelegate avant la première évaluation du body SwiftUI, donc `appDelegate.container` est valide pour `.modelContainer(…)` sur les scenes.
+- Phase 9 : le cap d'historique (`historyMaxCount`) est lu dans `HistoryService.prune(in:)` via `UserDefaults.standard.integer(forKey:)` plutôt que passé en paramètre — `@AppStorage` ne fonctionne qu'en contexte View, et un default est enregistré une fois pour toutes au boot via `UserDefaults.register(defaults:)` dans `AppDelegate.init()` pour garantir 30 si la clé n'a jamais été écrite. `max(1, …)` défensif au cas où une valeur invalide se glisserait.
+- Phase 9 : le menu bar est refactoré dans une View privée `MenuBarContent` pour pouvoir y utiliser `@Query` et `@Environment(\.modelContext)` — SwiftUI ne peut pas injecter le `ModelContext` directement dans un closure de `MenuBarExtra { … }` sans passer par un type View. Le clic sur une entrée récente capture `entry.text` côté main actor (`let text = entry.text` hors `Task`), puis `Task { await coordinator.recopy(text) }` évite de passer l'instance `@Model` (non-Sendable) à un contexte asynchrone non-isolé.
+- Phase 9 : pour les labels de lignes récentes, on utilise `Text(verbatim: "<preview> — <relative time>")` plutôt que `Button(_:action:)` avec interpolation → pas d'ajout au String Catalog d'une clé `"%@ — %@"` inutile. La localisation provient de `Date.formatted(.relative(presentation: .named))` qui gère "il y a 2 min" / "2 minutes ago" via la locale courante.
+- Phase 9 : `clearHistory()` appelle `context.delete(model: OCREntry.self)` puis `context.save()` — `delete(model:)` supprime en batch sans avoir à fetch+iter+delete, ce qui évite de matérialiser 30 objets pour rien. Dupliqué dans `MenuBarContent` et `HistorySettingsView` (3 lignes chaque) — pas de helper partagé tant que c'est si court.
