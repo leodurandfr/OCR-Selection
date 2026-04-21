@@ -9,15 +9,15 @@ struct NotificationService {
     }
 
     func notifySuccess(preview text: String) async {
-        await deliver(title: "Texte copié", body: Self.preview(of: text))
+        await deliver(title: String(localized: "Text copied"), body: Self.preview(of: text))
     }
 
     func notifyNoText() async {
-        await deliver(title: "Aucun texte détecté", body: "")
+        await deliver(title: String(localized: "No text detected"), body: "")
     }
 
     func notifyFailure() async {
-        await deliver(title: "Erreur lors de la capture", body: "")
+        await deliver(title: String(localized: "Capture failed"), body: "")
     }
 
     private func deliver(title: String, body: String) async {

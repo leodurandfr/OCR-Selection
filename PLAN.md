@@ -93,12 +93,12 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 6 — Localisation EN / FR / ES
 
-- [ ] Créer un `Localizable.xcstrings` (String Catalog, format moderne Xcode 15+)
-- [ ] Extraire toutes les chaînes UI (menu items, notifications, labels prefs à venir)
-- [ ] Fournir les 3 traductions (base: EN, traduire FR & ES)
-- [ ] `Info.plist` : `CFBundleLocalizations = [en, fr, es]`, `CFBundleDevelopmentRegion = en`
-- [ ] Tester en changeant la langue système
-- [ ] Vérifier que les raccourcis ⌘ restent cohérents
+- [x] Créer un `Localizable.xcstrings` (String Catalog, format moderne Xcode 15+)
+- [x] Extraire toutes les chaînes UI (menu items, notifications, labels prefs à venir)
+- [x] Fournir les 3 traductions (base: EN, traduire FR & ES)
+- [x] `Info.plist` : `CFBundleLocalizations = [en, fr, es]`, `CFBundleDevelopmentRegion = en` *(géré implicitement — voir notes : `knownRegions` + `.lproj` auto-compilés remplacent la clé manuelle ; `CFBundleDevelopmentRegion = en` présent via `developmentRegion`)*
+- [ ] Tester en changeant la langue système *(validation manuelle à faire par l'utilisateur — build OK, `.lproj` générés pour en/fr/es)*
+- [x] Vérifier que les raccourcis ⌘ restent cohérents
 
 ## Phase 7 — Fenêtre Préférences (structure)
 
@@ -172,9 +172,9 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 6 — Localisation EN / FR / ES.
+**Phase en cours** : Phase 7 — Fenêtre Préférences (structure).
 
-**Dernière phase complétée** : Phase 5 — Notifications. `Services/NotificationService.swift` expose `requestAuthorization()`, `notifySuccess(preview:)`, `notifyNoText()`, `notifyFailure()` — chaque livraison crée un `UNNotificationRequest` avec `trigger: nil` (affichage immédiat). `AppDelegate` (via `@NSApplicationDelegateAdaptor` dans `OCRSelectionApp`) déclenche la demande de permission `[.alert, .sound]` dans `applicationDidFinishLaunching`. `CaptureCoordinator.run()` devient `async` (non throwing) et gère les trois branches : succès → `notifySuccess`, `OCRError.noTextFound` → `notifyNoText`, `CaptureError.userCancelled` → silence, tout autre throw → `notifyFailure` + `NSLog`. L'aperçu de 50 caractères remplace les sauts de ligne par des espaces et tronque avec « … ». Build OK (`BUILD SUCCEEDED`).
+**Dernière phase complétée** : Phase 6 — Localisation EN / FR / ES. `OCRSelection/Localizable.xcstrings` contient 7 clés (`Capture Area`, `Preferences…`, `Preferences`, `Quit OCR Selection`, `Text copied`, `No text detected`, `Capture failed`) avec traductions EN/FR/ES. Les chaînes UI codées en dur (français) ont été remplacées par leurs équivalents anglais : SwiftUI auto-localise les littéraux `Button`/`Text` via `LocalizedStringKey`, et `NotificationService` utilise `String(localized:)` pour ses trois titres. `knownRegions` du `project.pbxproj` passe à `(en, fr, es, Base)`. Le brand « OCR Selection » reste non-localisé dans le label `MenuBarExtra`. Build OK (`BUILD SUCCEEDED`), les répertoires `en.lproj`/`fr.lproj`/`es.lproj` sont générés dans le bundle avec les `.strings` compilés.
 
 **Notes / décisions en cours de route** :
 
@@ -194,3 +194,5 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - Phase 5 : `CaptureCoordinator.run()` n'est plus `throws` — il avale les erreurs lui-même après avoir déclenché la notification appropriée. L'appelant (bouton menu, bientôt raccourci global Phase 8) n'a plus à gérer de `catch`. `NSLog` conservé en plus de `notifyFailure()` pour le debug Console.app.
 - Phase 5 : corps d'aperçu nettoyé (newlines → espaces, trim) et tronqué à 50 caractères + « … » — garde la notification système lisible sans débordement visuel.
 - Phase 5 : `UNUserNotificationCenter.requestAuthorization` appelée via un `Task` depuis `applicationDidFinishLaunching` plutôt qu'à l'init du coordinateur → respecte la formulation du plan et centralise le cycle de vie app-level dans l'`AppDelegate`.
+- Phase 6 : pas de clé `INFOPLIST_KEY_CFBundleLocalizations` (non supportée par Xcode avec `GENERATE_INFOPLIST_FILE = YES`). À la place, on s'appuie sur la mécanique recommandée par Apple : `knownRegions` + `.xcstrings` → Xcode compile automatiquement des `.lproj` dans le bundle, et le système détermine `CFBundleLocalizations` à partir de ces répertoires à l'exécution. Effet identique à une clé manuelle. `CFBundleDevelopmentRegion = en` est écrit par Xcode à partir de `developmentRegion = en` du `project.pbxproj` (déjà présent).
+- Phase 6 : chaînes UI passées en anglais comme langue source (le projet a `developmentRegion = en` depuis la Phase 0). `Button("Capture Area")` / `Text("Preferences…")` / `Button("Quit OCR Selection")` — SwiftUI traite les littéraux comme `LocalizedStringKey` et les résout via le catalogue. Dans `NotificationService`, `String(localized: "…")` car on est en contexte impératif (pas de `LocalizedStringKey` implicite). Le label `MenuBarExtra("OCR Selection", …)` reste inchangé : c'est le nom de marque, pas localisé.
