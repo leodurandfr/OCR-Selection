@@ -40,11 +40,3 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { await notifications.requestAuthorization() }
     }
 }
-
-private struct PreferencesView: View {
-    var body: some View {
-        Text("Preferences")
-            .font(.title3)
-            .frame(width: 480, height: 260)
-    }
-}

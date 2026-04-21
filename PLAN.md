@@ -102,15 +102,15 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 7 — Fenêtre Préférences (structure)
 
-- [ ] `Preferences/PreferencesView.swift` avec `TabView` (style `.automatic`)
-- [ ] 3 onglets (icônes SF Symbol + labels localisés) :
+- [x] `Preferences/PreferencesView.swift` avec `TabView` (style `.automatic`)
+- [x] 3 onglets (icônes SF Symbol + labels localisés) :
   - **Général** (`gear`)
   - **Raccourci** (`command`)
   - **Historique** (`clock`)
-- [ ] Onglet **Général** :
+- [x] Onglet **Général** :
   - `Toggle("Lancer au démarrage")` → `SMAppService.mainApp.register()/unregister()`
-- [ ] Onglets Raccourci & Historique : placeholders (remplis Phases 8 & 9)
-- [ ] Vérifier l'ouverture depuis le menu bar, fermeture propre
+- [x] Onglets Raccourci & Historique : placeholders (remplis Phases 8 & 9)
+- [x] Vérifier l'ouverture depuis le menu bar, fermeture propre *(build OK ; validation visuelle à faire par l'utilisateur)*
 
 ## Phase 8 — Raccourci global
 
@@ -172,9 +172,9 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 7 — Fenêtre Préférences (structure).
+**Phase en cours** : Phase 8 — Raccourci global.
 
-**Dernière phase complétée** : Phase 6 — Localisation EN / FR / ES. `OCRSelection/Localizable.xcstrings` contient 7 clés (`Capture Area`, `Preferences…`, `Preferences`, `Quit OCR Selection`, `Text copied`, `No text detected`, `Capture failed`) avec traductions EN/FR/ES. Les chaînes UI codées en dur (français) ont été remplacées par leurs équivalents anglais : SwiftUI auto-localise les littéraux `Button`/`Text` via `LocalizedStringKey`, et `NotificationService` utilise `String(localized:)` pour ses trois titres. `knownRegions` du `project.pbxproj` passe à `(en, fr, es, Base)`. Le brand « OCR Selection » reste non-localisé dans le label `MenuBarExtra`. Build OK (`BUILD SUCCEEDED`), les répertoires `en.lproj`/`fr.lproj`/`es.lproj` sont générés dans le bundle avec les `.strings` compilés.
+**Dernière phase complétée** : Phase 7 — Fenêtre Préférences (structure). Nouveau `OCRSelection/Preferences/PreferencesView.swift` : `TabView` à 3 onglets (`Général`/`gear`, `Raccourci`/`command`, `Historique`/`clock`), frame fixe 480×260. Onglet **Général** expose un `Toggle("Launch at login")` câblé à `SMAppService.mainApp.register()/unregister()` (framework `ServiceManagement`), état initial lu dans `.onAppear` depuis `SMAppService.mainApp.status == .enabled`, `onChange` applique la bascule et log l'erreur éventuelle via `NSLog`. Onglets Raccourci/Historique : simples `Text(verbatim:)` secondaires en placeholder (à remplacer Phases 8 & 9). Le placeholder `private struct PreferencesView` supprimé de `OCRSelectionApp.swift` au profit du nouveau fichier. 4 clés ajoutées au catalogue : `General`, `Shortcut`, `History`, `Launch at login` (EN/FR/ES). Build OK (`BUILD SUCCEEDED`).
 
 **Notes / décisions en cours de route** :
 
@@ -196,3 +196,4 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - Phase 5 : `UNUserNotificationCenter.requestAuthorization` appelée via un `Task` depuis `applicationDidFinishLaunching` plutôt qu'à l'init du coordinateur → respecte la formulation du plan et centralise le cycle de vie app-level dans l'`AppDelegate`.
 - Phase 6 : pas de clé `INFOPLIST_KEY_CFBundleLocalizations` (non supportée par Xcode avec `GENERATE_INFOPLIST_FILE = YES`). À la place, on s'appuie sur la mécanique recommandée par Apple : `knownRegions` + `.xcstrings` → Xcode compile automatiquement des `.lproj` dans le bundle, et le système détermine `CFBundleLocalizations` à partir de ces répertoires à l'exécution. Effet identique à une clé manuelle. `CFBundleDevelopmentRegion = en` est écrit par Xcode à partir de `developmentRegion = en` du `project.pbxproj` (déjà présent).
 - Phase 6 : chaînes UI passées en anglais comme langue source (le projet a `developmentRegion = en` depuis la Phase 0). `Button("Capture Area")` / `Text("Preferences…")` / `Button("Quit OCR Selection")` — SwiftUI traite les littéraux comme `LocalizedStringKey` et les résout via le catalogue. Dans `NotificationService`, `String(localized: "…")` car on est en contexte impératif (pas de `LocalizedStringKey` implicite). Le label `MenuBarExtra("OCR Selection", …)` reste inchangé : c'est le nom de marque, pas localisé.
+- Phase 7 : `PreferencesView` sort de `OCRSelectionApp.swift` vers `Preferences/PreferencesView.swift` (les sous-vues `GeneralSettingsView`/`ShortcutSettingsView`/`HistorySettingsView` sont `private` dans le même fichier — pas de fichier séparé tant qu'elles restent légères). La scene `Settings { PreferencesView() }` n'a pas changé : `SettingsLink` continue de l'ouvrir. `SMAppService.mainApp` suffit pour un Login Item d'app principale (pas besoin de helper tool ni d'agent LaunchDaemon). L'état initial du `Toggle` est synchronisé via `.onAppear` : utiliser un initializer `@State = SMAppService.mainApp.status == .enabled` serait évalué trop tôt (la view struct est recréée à chaque changement de parent, l'init @State ne se déclenche qu'à la première apparition — OK, mais `.onAppear` rend l'intention plus explicite et permet de re-synchroniser si l'utilisateur modifie l'état depuis Réglages Système). Les placeholders Raccourci/Historique utilisent `Text(verbatim:)` pour éviter d'ajouter des clés transitoires au catalogue — seront remplacés en Phases 8 & 9.
