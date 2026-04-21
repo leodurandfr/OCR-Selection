@@ -20,7 +20,7 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 | Langages UI | 🇬🇧 EN · 🇫🇷 FR · 🇪🇸 ES |
 | Raccourci par défaut | ⌘⇧2 |
 | Historique max | 30 (configurable 10–50) |
-| Sandbox | **désactivé** en MVP (à cause de `screencapture` CLI). Réactivé en Phase 12 avec ScreenCaptureKit. |
+| Sandbox | **désactivé** en MVP (à cause de `screencapture` CLI). Réactivé en Phase 14 après migration ScreenCaptureKit (Phase 13). |
 
 ---
 
@@ -156,25 +156,65 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - [x] Tooltips / `.accessibilityLabel` sur les éléments critiques
 - [x] Revue finale : toute la UI passe en FR/EN/ES correctement
 
-## Phase 12 — Distribution
+## Phase 12 — Distribution Developer ID
 
-- [ ] Configurer la Team Developer ID dans Xcode
-- [ ] Archive → Distribute App → Developer ID
-- [ ] Notarization (`xcrun notarytool submit` + `stapler staple`)
+- [x] Configurer la Team Developer ID dans Xcode
+- [x] Archive → Distribute App → Developer ID (flux "Direct Distribution" : signature + notarization + stapler automatisés par Xcode)
+- [x] Notarization (réalisée par le flux Direct Distribution, équivaut à `xcrun notarytool submit --wait` + `xcrun stapler staple`)
 - [ ] Créer un DMG (script `create-dmg` ou manuel)
 - [ ] Tester l'install sur une autre machine / un compte utilisateur vierge
-- [ ] **Optionnel — passage App Store** :
-  - Remplacer `screencapture -i -c` par une implémentation native `ScreenCaptureKit` + overlay de sélection custom
-  - Réactiver App Sandbox
-  - Soumettre à App Store Connect
+
+## Phase 13 — Migration ScreenCaptureKit (prérequis App Store)
+
+> Objectif : remplacer `screencapture -i -c` par une implémentation native compatible avec App Sandbox. Bloquant pour la Phase 14.
+
+- [ ] Ajouter `import ScreenCaptureKit` et vérifier la permission via `SCShareableContent.current` (déclenche le prompt standard macOS, plus besoin de `CGPreflightScreenCaptureAccess` custom)
+- [ ] Nouveau `SelectionOverlayController` :
+  - `NSPanel` borderless plein écran (un par `NSScreen`), `level = .screenSaver`, `isOpaque = false`, background `NSColor.black.withAlphaComponent(0.25)`
+  - Capture `mouseDown` / `mouseDragged` / `mouseUp` pour dessiner un `NSBezierPath` rectangulaire (bordure blanche + intérieur transparent via `NSCompositingOperation.destinationOut`)
+  - Échap → `CaptureError.userCancelled` ; release souris → renvoie le `CGRect` sélectionné en coordonnées écran
+  - Cacher le curseur pendant la sélection (`NSCursor.hide()` / `unhide()`)
+- [ ] Réécrire `ScreenCaptureService.captureRegion()` :
+  - Présenter l'overlay, attendre le `CGRect`
+  - `SCScreenshotManager.captureImage(contentFilter:configuration:)` sur l'écran concerné (filtre = `SCContentFilter(display:excludingWindows:)` pour exclure notre propre overlay)
+  - Crop du `CGImage` retourné avec le rect → passé à `OCRService` (inchangé)
+- [ ] Supprimer le code `Process` + `NSPasteboard` intermédiaire + parsing stderr
+- [ ] Mettre à jour `CaptureError` : retirer `screenCaptureFailed` / `screenRecordingPermissionDenied` obsolètes, ajouter ce qui vient de ScreenCaptureKit
+- [ ] Mettre à jour `CaptureCoordinator.presentScreenRecordingAlert()` : ScreenCaptureKit gère le prompt système nativement, l'alerte custom peut être supprimée ou simplifiée en « ouvrir Réglages » après un refus confirmé
+- [ ] Tester **avec App Sandbox activé localement** (entitlement à true temporairement) avant la Phase 14 — c'est le seul mode qui révèle les bugs sandbox
+
+## Phase 14 — Soumission App Store
+
+- [ ] Activer App Sandbox dans `OCRSelection.entitlements` : `com.apple.security.app-sandbox = true`
+- [ ] Ajouter `INFOPLIST_KEY_NSScreenCaptureUsageDescription` (3 langues via le String Catalog ou `InfoPlist.xcstrings`)
+- [ ] Vérifier les autres dépendances en mode sandbox :
+  - SwiftData → container migre vers `~/Library/Containers/com.leodurand.ocr-selection/Data/Library/Application Support/` (⚠️ pas de migration auto depuis l'ancien emplacement — prévoir une export/import si des utilisateurs Developer ID existent)
+  - `KeyboardShortcuts` SPM → compatible sandbox
+  - `SMAppService.mainApp` (login item) → compatible sandbox
+  - `UNUserNotificationCenter` → compatible sandbox
+  - `NSPasteboard.general.setString` → compatible sandbox (pas besoin d'entitlement supplémentaire)
+- [ ] Créer l'app dans **App Store Connect** (même Bundle ID `com.leodurand.ocr-selection`, même Team ID `7C2S8B9978`)
+- [ ] Fournir les assets de la fiche App Store :
+  - Description EN / FR / ES (reprendre le pitch de l'app)
+  - Mots-clés ≤ 100 caractères / langue
+  - Screenshots (min 1280×800, recommandé 1440×900 ou 2880×1800 @2x)
+  - Icône marketing 1024×1024 PNG sans canal alpha (la même que `AppIcon.appiconset`, mais aplatie)
+  - Catégorie primaire : Utilities
+- [ ] Privacy Nutrition Labels dans App Store Connect : déclarer **Data Not Collected** (aucune collecte, aucun tracking, aucun réseau)
+- [ ] URL de support + URL de politique de confidentialité (obligatoire — une page GitHub Pages minimaliste suffit)
+- [ ] Age rating (4+) + export compliance : aucun chiffrement custom → cocher **No**
+- [ ] Archive → Distribute App → **App Store Connect** → Upload (nouveau flux, différent du Developer ID de la Phase 12)
+- [ ] Soumettre pour review depuis App Store Connect (review typique 24–48h)
 
 ---
 
 ## État actuel
 
-**Phase en cours** : Phase 12 — Distribution.
+**Phase en cours** : Phase 12 — Distribution Developer ID (export & notarization OK via « Direct Distribution » ; reste DMG + test sur machine vierge en option). Phases 13–14 planifiées pour une future soumission App Store, non bloquantes.
 
-**Dernière phase complétée** : Phase 11 — Polish & UX. (1) **AppIcon** : icône fournie par l'utilisateur (1024×1024, PNG, coins de cadre blancs sur fond noir) redimensionnée via `sips -z` en 7 tailles (16/32/64/128/256/512/1024) ; `Contents.json` mis à jour pour référencer les filenames (l'icône @2x = deux fois le pixel count de la @1x, donc `icon_32.png` sert de 16×16@2x ET de 32×32@1x, etc.). `icon.png` à la racine du repo ajouté au `.gitignore` — seules les copies bundlées dans `Assets.xcassets/AppIcon.appiconset/` restent sous versioning. (2) **About** : `Button("About OCR Selection")` dans le `MenuBarExtra` appelle `NSApp.activate(ignoringOtherApps:)` + `orderFrontStandardAboutPanel(nil)` — la fenêtre About standard reprend automatiquement le nom du bundle, la version, l'icône et le copyright (`NSHumanReadableCopyright` posé en Phase 0). (3) **Permission Screen Recording** : nouveau cas `CaptureError.screenRecordingPermissionDenied` dans `ScreenCaptureService` — lorsque `screencapture` sort sans image, on preflight via `CGPreflightScreenCaptureAccess()` avant de décider entre `userCancelled` / `screenCaptureFailed` / `screenRecordingPermissionDenied`. Si refusée, `CaptureCoordinator.presentScreenRecordingAlert()` (statique, `@MainActor`) affiche un `NSAlert` avec deux boutons : **Open System Settings** → `NSWorkspace.shared.open` sur `x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture`, et **Cancel**. `NSApp.activate(ignoringOtherApps:)` appelé avant `runModal` pour que l'alerte prenne le focus même si l'app est en arrière-plan. (4) **Notification OCR distincte** : `NotificationService.notifyOCRFailed()` (titre « Unable to read text », body « The capture succeeded but text recognition failed. ») — déclenchée dans `CaptureCoordinator.run()` sur `OCRError.visionFailed(_)` en plus de logger l'erreur sous-jacente via `NSLog`. Le cas `noTextFound` reste sur `notifyNoText()` (pas d'erreur Vision, juste zéro observation), et `notifyFailure()` reste le fallback générique. (5) **Accessibilité** : `.help(Text("…"))` ajouté sur les contrôles clés des Préférences (toggle login, recorder, bouton Reset, slider historique, bouton Clear) — `.help` rend un tooltip natif au survol ET est exposé à VoiceOver comme description. Slider : `.accessibilityLabel(Text("Entries kept"))` + `.accessibilityValue(Text("\(maxCount)"))` pour que VoiceOver annonce à la fois l'élément et la valeur courante (le `Text("Entries kept: \(maxCount)")` juste au-dessus est visuel, pas accessibility-liable au slider). (6) **Localisation** : 13 nouvelles clés ajoutées à `Localizable.xcstrings` (About OCR Selection, Screen Recording permission required + body, Open System Settings, Cancel, Unable to read text, The capture succeeded but text recognition failed., + 5 tooltips). Toutes traduites EN/FR/ES en une passe. `String(localized: …)` utilisé dans `NSAlert` et `NotificationService` (contexte impératif) ; `Text(LocalizedStringKey)` partout ailleurs. `xcodebuild build` + `xcodebuild test` (9 tests / 4 suites) → SUCCEEDED.
+**Dernière phase complétée** : Phase 12 (partielle) — flux « Direct Distribution » utilisé dans Xcode Organizer : Xcode signe avec le certificat Developer ID Application, uploade à Apple pour notarization, staple le ticket et renvoie un `.app` prêt à distribuer. Équivaut en une étape à `xcodebuild -exportArchive` + `xcrun notarytool submit --wait` + `xcrun stapler staple`, sans app-specific password à gérer. Erreur rencontrée au premier essai (« App Sandbox not enabled ») = preuve qu'on a d'abord sélectionné à tort le flux **App Store** ; corrigé en choisissant **Direct Distribution** → validation immédiate. Reste à produire un DMG et valider l'install sur un compte utilisateur vierge avant de cocher la Phase 12 comme 100 % complète. Phases 13 (migration ScreenCaptureKit + overlay de sélection custom) et 14 (soumission App Store avec sandbox réactivé) ajoutées au plan comme chemin optionnel vers le Mac App Store.
+
+**Phase 11 récap** — Polish & UX : (1) **AppIcon** : icône fournie par l'utilisateur (1024×1024, PNG, coins de cadre blancs sur fond noir) redimensionnée via `sips -z` en 7 tailles (16/32/64/128/256/512/1024) ; `Contents.json` mis à jour pour référencer les filenames (l'icône @2x = deux fois le pixel count de la @1x, donc `icon_32.png` sert de 16×16@2x ET de 32×32@1x, etc.). `icon.png` à la racine du repo ajouté au `.gitignore` — seules les copies bundlées dans `Assets.xcassets/AppIcon.appiconset/` restent sous versioning. (2) **About** : `Button("About OCR Selection")` dans le `MenuBarExtra` appelle `NSApp.activate(ignoringOtherApps:)` + `orderFrontStandardAboutPanel(nil)` — la fenêtre About standard reprend automatiquement le nom du bundle, la version, l'icône et le copyright (`NSHumanReadableCopyright` posé en Phase 0). (3) **Permission Screen Recording** : nouveau cas `CaptureError.screenRecordingPermissionDenied` dans `ScreenCaptureService` — lorsque `screencapture` sort sans image, on preflight via `CGPreflightScreenCaptureAccess()` avant de décider entre `userCancelled` / `screenCaptureFailed` / `screenRecordingPermissionDenied`. Si refusée, `CaptureCoordinator.presentScreenRecordingAlert()` (statique, `@MainActor`) affiche un `NSAlert` avec deux boutons : **Open System Settings** → `NSWorkspace.shared.open` sur `x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture`, et **Cancel**. `NSApp.activate(ignoringOtherApps:)` appelé avant `runModal` pour que l'alerte prenne le focus même si l'app est en arrière-plan. (4) **Notification OCR distincte** : `NotificationService.notifyOCRFailed()` (titre « Unable to read text », body « The capture succeeded but text recognition failed. ») — déclenchée dans `CaptureCoordinator.run()` sur `OCRError.visionFailed(_)` en plus de logger l'erreur sous-jacente via `NSLog`. Le cas `noTextFound` reste sur `notifyNoText()` (pas d'erreur Vision, juste zéro observation), et `notifyFailure()` reste le fallback générique. (5) **Accessibilité** : `.help(Text("…"))` ajouté sur les contrôles clés des Préférences (toggle login, recorder, bouton Reset, slider historique, bouton Clear) — `.help` rend un tooltip natif au survol ET est exposé à VoiceOver comme description. Slider : `.accessibilityLabel(Text("Entries kept"))` + `.accessibilityValue(Text("\(maxCount)"))` pour que VoiceOver annonce à la fois l'élément et la valeur courante (le `Text("Entries kept: \(maxCount)")` juste au-dessus est visuel, pas accessibility-liable au slider). (6) **Localisation** : 13 nouvelles clés ajoutées à `Localizable.xcstrings` (About OCR Selection, Screen Recording permission required + body, Open System Settings, Cancel, Unable to read text, The capture succeeded but text recognition failed., + 5 tooltips). Toutes traduites EN/FR/ES en une passe. `String(localized: …)` utilisé dans `NSAlert` et `NotificationService` (contexte impératif) ; `Text(LocalizedStringKey)` partout ailleurs. `xcodebuild build` + `xcodebuild test` (9 tests / 4 suites) → SUCCEEDED.
 
 **Notes / décisions en cours de route** :
 
