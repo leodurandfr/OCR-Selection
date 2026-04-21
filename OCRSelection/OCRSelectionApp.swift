@@ -1,3 +1,4 @@
+import AppKit
 import KeyboardShortcuts
 import SwiftData
 import SwiftUI
@@ -80,6 +81,11 @@ private struct MenuBarContent: View {
             Text("Preferences…")
         }
         .keyboardShortcut(",", modifiers: .command)
+
+        Button("About OCR Selection") {
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            NSApplication.shared.orderFrontStandardAboutPanel(nil)
+        }
 
         Divider()
 

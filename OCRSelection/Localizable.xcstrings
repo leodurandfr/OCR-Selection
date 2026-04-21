@@ -23,6 +23,50 @@
         }
       }
     },
+    "About OCR Selection" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About OCR Selection"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de OCR Selection"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos d’OCR Selection"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
+          }
+        }
+      }
+    },
     "Capture Area" : {
       "localizations" : {
         "en" : {
@@ -177,6 +221,28 @@
         }
       }
     },
+    "Global keyboard shortcut to start a capture from anywhere." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global keyboard shortcut to start a capture from anywhere."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atajo de teclado global para iniciar una captura desde cualquier lugar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raccourci clavier global pour lancer une capture depuis n’importe où."
+          }
+        }
+      }
+    },
     "History" : {
       "localizations" : {
         "en" : {
@@ -221,6 +287,28 @@
         }
       }
     },
+    "Maximum number of captures kept in history." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maximum number of captures kept in history."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Número máximo de capturas conservadas en el historial."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre maximum de captures conservées dans l’historique."
+          }
+        }
+      }
+    },
     "No text detected" : {
       "localizations" : {
         "en" : {
@@ -245,6 +333,50 @@
     },
     "OCR Selection" : {
 
+    },
+    "OCR Selection needs the Screen Recording permission to capture your screen. Open System Settings to grant it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCR Selection needs the Screen Recording permission to capture your screen. Open System Settings to grant it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCR Selection necesita el permiso de Grabación de pantalla para capturar tu pantalla. Abre Ajustes del Sistema para concederlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OCR Selection a besoin de l’autorisation Enregistrement de l’écran pour capturer votre écran. Ouvrez Réglages Système pour l’accorder."
+          }
+        }
+      }
+    },
+    "Open System Settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open System Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes del Sistema"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir Réglages Système"
+          }
+        }
+      }
     },
     "Preferences…" : {
       "localizations" : {
@@ -312,6 +444,28 @@
         }
       }
     },
+    "Remove all captures from history." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove all captures from history."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar todas las capturas del historial."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer toutes les captures de l’historique."
+          }
+        }
+      }
+    },
     "Reset to Default" : {
       "localizations" : {
         "en" : {
@@ -330,6 +484,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Réinitialiser"
+          }
+        }
+      }
+    },
+    "Restore the default shortcut (⌘⇧2)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore the default shortcut (⌘⇧2)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar el atajo por defecto (⌘⇧2)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurer le raccourci par défaut (⌘⇧2)."
+          }
+        }
+      }
+    },
+    "Screen Recording permission required" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screen Recording permission required"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se requiere el permiso de Grabación de pantalla"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorisation Enregistrement de l’écran requise"
           }
         }
       }
@@ -356,6 +554,28 @@
         }
       }
     },
+    "Start OCR Selection automatically when you log in." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start OCR Selection automatically when you log in."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar OCR Selection automáticamente al iniciar sesión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer OCR Selection automatiquement à l’ouverture de session."
+          }
+        }
+      }
+    },
     "Text copied" : {
       "localizations" : {
         "en" : {
@@ -374,6 +594,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Texte copié"
+          }
+        }
+      }
+    },
+    "The capture succeeded but text recognition failed." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The capture succeeded but text recognition failed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura se realizó correctamente pero falló el reconocimiento de texto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La capture a réussi mais la reconnaissance du texte a échoué."
+          }
+        }
+      }
+    },
+    "Unable to read text" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to read text"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo leer el texto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de lire le texte"
           }
         }
       }

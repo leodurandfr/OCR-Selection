@@ -16,6 +16,13 @@ struct NotificationService {
         await deliver(title: String(localized: "No text detected"), body: "")
     }
 
+    func notifyOCRFailed() async {
+        await deliver(
+            title: String(localized: "Unable to read text"),
+            body: String(localized: "The capture succeeded but text recognition failed.")
+        )
+    }
+
     func notifyFailure() async {
         await deliver(title: String(localized: "Capture failed"), body: "")
     }

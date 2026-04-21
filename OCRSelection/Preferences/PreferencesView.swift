@@ -31,6 +31,7 @@ struct PreferencesView: View {
     private var generalSection: some View {
         section("General") {
             Toggle("Launch at login", isOn: $launchAtLogin)
+                .help(Text("Start OCR Selection automatically when you log in."))
         }
     }
 
@@ -39,11 +40,13 @@ struct PreferencesView: View {
             LabeledContent("Capture Area") {
                 KeyboardShortcuts.Recorder(for: .captureRegion)
             }
+            .help(Text("Global keyboard shortcut to start a capture from anywhere."))
             HStack {
                 Spacer()
                 Button("Reset to Default") {
                     KeyboardShortcuts.reset(.captureRegion)
                 }
+                .help(Text("Restore the default shortcut (⌘⇧2)."))
             }
         }
     }
@@ -60,12 +63,16 @@ struct PreferencesView: View {
                     Text(verbatim: "50")
                 }
                 .labelsHidden()
+                .accessibilityLabel(Text("Entries kept"))
+                .accessibilityValue(Text("\(maxCount)"))
+                .help(Text("Maximum number of captures kept in history."))
             }
             HStack {
                 Spacer()
                 Button("Clear History", role: .destructive) {
                     clearHistory()
                 }
+                .help(Text("Remove all captures from history."))
             }
         }
     }

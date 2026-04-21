@@ -64,3 +64,9 @@ fastlane/test_output
 # Environment
 .env
 .env.local
+
+# App icon source (bundled copies live in Assets.xcassets/AppIcon.appiconset)
+/icon.png
+
+# Claude worktrees
+.claude/

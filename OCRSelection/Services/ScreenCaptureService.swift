@@ -6,6 +6,7 @@ enum CaptureError: Error {
     case clipboardEmpty
     case decodingFailed
     case screenCaptureFailed(String)
+    case screenRecordingPermissionDenied
 }
 
 struct ScreenCaptureService {
@@ -16,6 +17,9 @@ struct ScreenCaptureService {
         let stderr = try await runScreenCapture()
 
         guard pasteboard.changeCount != initialChangeCount else {
+            if !CGPreflightScreenCaptureAccess() {
+                throw CaptureError.screenRecordingPermissionDenied
+            }
             let trimmed = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty {
                 throw CaptureError.userCancelled
