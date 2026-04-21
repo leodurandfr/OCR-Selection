@@ -9,18 +9,68 @@ struct PreferencesView: View {
     @State private var launchAtLogin = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            generalSection
+        Form {
+            Section("General") {
+                Toggle("Launch at login", isOn: $launchAtLogin)
+                    .help(Text("Start OCR Selection automatically when you log in."))
+            }
+
             sectionDivider
-            shortcutSection
+
+            Section("Shortcut") {
+                LabeledContent("Capture Area") {
+                    KeyboardShortcuts.Recorder(for: .captureRegion)
+                }
+                .help(Text("Global keyboard shortcut to start a capture from anywhere."))
+                HStack {
+                    Spacer()
+                    Button("Reset to Default") {
+                        KeyboardShortcuts.reset(.captureRegion)
+                    }
+                    .help(Text("Restore the default shortcut (⌘⇧2)."))
+                }
+            }
+
             sectionDivider
-            historySection
+
+            Section("History") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Entries kept: \(maxCount)")
+                    Slider(value: sliderBinding, in: 10...50, step: 5) {
+                        Text("Entries kept")
+                    } minimumValueLabel: {
+                        Text(verbatim: "10")
+                    } maximumValueLabel: {
+                        Text(verbatim: "50")
+                    }
+                    .labelsHidden()
+                    .accessibilityLabel(Text("Entries kept"))
+                    .accessibilityValue(Text("\(maxCount)"))
+                    .help(Text("Maximum number of captures kept in history."))
+                }
+                HStack {
+                    Spacer()
+                    Button("Clear History", role: .destructive) {
+                        clearHistory()
+                    }
+                    .help(Text("Remove all captures from history."))
+                }
+            }
+
             sectionDivider
-            aboutSection
+
+            Section("About") {
+                LabeledContent {
+                    Link(destination: URL(string: "https://leodurand.com")!) {
+                        Text(verbatim: "leodurand.com")
+                    }
+                } label: {
+                    Text("Designed by")
+                }
+            }
         }
-        .padding(20)
-        .frame(width: 480)
-        .fixedSize(horizontal: false, vertical: true)
+        .formStyle(.grouped)
+        .frame(width: 480, height: 500)
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
@@ -30,86 +80,9 @@ struct PreferencesView: View {
     }
 
     private var sectionDivider: some View {
-        Divider().padding(.vertical, 12)
-    }
-
-    private var generalSection: some View {
-        section("General") {
-            Toggle("Launch at login", isOn: $launchAtLogin)
-                .help(Text("Start OCR Selection automatically when you log in."))
-        }
-    }
-
-    private var shortcutSection: some View {
-        section("Shortcut") {
-            LabeledContent("Capture Area") {
-                KeyboardShortcuts.Recorder(for: .captureRegion)
-            }
-            .help(Text("Global keyboard shortcut to start a capture from anywhere."))
-            HStack {
-                Spacer()
-                Button("Reset to Default") {
-                    KeyboardShortcuts.reset(.captureRegion)
-                }
-                .help(Text("Restore the default shortcut (⌘⇧2)."))
-            }
-        }
-    }
-
-    private var historySection: some View {
-        section("History") {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Entries kept: \(maxCount)")
-                Slider(value: sliderBinding, in: 10...50, step: 5) {
-                    Text("Entries kept")
-                } minimumValueLabel: {
-                    Text(verbatim: "10")
-                } maximumValueLabel: {
-                    Text(verbatim: "50")
-                }
-                .labelsHidden()
-                .accessibilityLabel(Text("Entries kept"))
-                .accessibilityValue(Text("\(maxCount)"))
-                .help(Text("Maximum number of captures kept in history."))
-            }
-            HStack {
-                Spacer()
-                Button("Clear History", role: .destructive) {
-                    clearHistory()
-                }
-                .help(Text("Remove all captures from history."))
-            }
-        }
-    }
-
-    private var aboutSection: some View {
-        section("About") {
-            LabeledContent {
-                Link(destination: URL(string: "https://leodurand.com")!) {
-                    Text(verbatim: "leodurand.com")
-                }
-            } label: {
-                Text("Designed by")
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func section<Content: View>(
-        _ title: LocalizedStringKey,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-            content()
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
+        Divider()
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
     }
 
     private var sliderBinding: Binding<Double> {
