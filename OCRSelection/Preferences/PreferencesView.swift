@@ -14,6 +14,8 @@ struct PreferencesView: View {
                 Toggle("Launch at login", isOn: $launchAtLogin)
             }
 
+            Divider()
+
             Section("Shortcut") {
                 LabeledContent("Capture Area") {
                     KeyboardShortcuts.Recorder(for: .captureRegion)
@@ -22,6 +24,8 @@ struct PreferencesView: View {
                     KeyboardShortcuts.reset(.captureRegion)
                 }
             }
+
+            Divider()
 
             Section("History") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -39,6 +43,8 @@ struct PreferencesView: View {
                     clearHistory()
                 }
             }
+
+            Divider()
 
             Section("About") {
                 LabeledContent {
