@@ -186,3 +186,5 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - `xcodebuild` nécessite `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (la CLI pointe par défaut sur les Command Line Tools).
 - Détection d'annulation dans `ScreenCaptureService` via `NSPasteboard.changeCount` (snapshot avant/après) plutôt que de vider le presse-papier : on ne perturbe pas le contenu existant si l'utilisateur fait Échap.
 - Le bouton « Debug : tester la capture » est temporaire — il sera retiré en Phase 4 quand le vrai bouton « Capturer une zone » sera câblé au `CaptureCoordinator`.
+- `stderr` de `screencapture` capturé via `Pipe` → distingue annulation utilisateur (stderr vide) d'un échec réel (`CaptureError.screenCaptureFailed`).
+- `DEVELOPMENT_TEAM = 7C2S8B9978` dans `project.pbxproj` (Debug & Release) → signature stable entre les rebuilds, indispensable pour que TCC conserve la permission Enregistrement d'écran en dev.

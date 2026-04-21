@@ -50,6 +50,13 @@ struct OCRSelectionApp: App {
             await MainActor.run {
                 showDebugAlert(title: "Capture annulée", message: "L'utilisateur a appuyé sur Échap.")
             }
+        } catch CaptureError.screenCaptureFailed(let details) {
+            await MainActor.run {
+                showDebugAlert(
+                    title: "Échec de la capture",
+                    message: "screencapture a échoué. Vérifier la permission Enregistrement d'écran.\n\nDétails :\n\(details)"
+                )
+            }
         } catch {
             await MainActor.run {
                 showDebugAlert(title: "Erreur", message: String(describing: error))
