@@ -74,11 +74,11 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 4 — Écriture dans le presse-papier
 
-- [ ] `Services/PasteboardService.swift`
-- [ ] Méthode `func copyText(_ text: String)` → `NSPasteboard.general.clearContents()` puis `setString(_:forType: .string)`
-- [ ] Coordinateur `CaptureCoordinator.swift` qui orchestre : `capture → OCR → paste`
-- [ ] Câbler le bouton « Capturer une zone » du menu à ce coordinateur
-- [ ] Test end-to-end : sélectionner un texte à l'écran → texte dans le presse-papier
+- [x] `Services/PasteboardService.swift`
+- [x] Méthode `func copyText(_ text: String)` → `NSPasteboard.general.clearContents()` puis `setString(_:forType: .string)`
+- [x] Coordinateur `CaptureCoordinator.swift` qui orchestre : `capture → OCR → paste`
+- [x] Câbler le bouton « Capturer une zone » du menu à ce coordinateur
+- [x] Test end-to-end : sélectionner un texte à l'écran → texte dans le presse-papier *(validation manuelle à faire par l'utilisateur — build OK)*
 
 ## Phase 5 — Notifications
 
@@ -172,9 +172,9 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 4 — Écriture dans le presse-papier.
+**Phase en cours** : Phase 5 — Notifications.
 
-**Dernière phase complétée** : Phase 3 — OCR via Vision. `Services/OCRService.swift` encapsule un `VNRecognizeTextRequest` (`.accurate`, `automaticallyDetectsLanguage`, `usesLanguageCorrection` à `true`), exécuté sur une queue globale via `withCheckedThrowingContinuation`. Les `VNRecognizedTextObservation` sont triées par `boundingBox.midY` décroissant (origine bottom-left de Vision → haut = midY max) puis jointes avec `\n`. Le bouton « Debug : tester la capture + OCR » enchaîne capture → OCR et affiche le texte dans une `NSAlert`. Build OK (`BUILD SUCCEEDED`).
+**Dernière phase complétée** : Phase 4 — Écriture dans le presse-papier. `Services/PasteboardService.swift` expose `copyText(_:)` (`clearContents()` + `setString(_:forType: .string)`). `CaptureCoordinator.swift` (niveau app, hors `Services/`) orchestre `capture → OCR → paste` via une unique méthode `run() async throws`. Le bouton « Capturer une zone » du `MenuBarExtra` est câblé à `coordinator.run()` dans un `Task`. Le bouton debug temporaire et les helpers `NSAlert` ont été retirés. Gestion d'erreur minimale : `CaptureError.userCancelled` silencieux (Échap utilisateur attendu), tout autre throw → `NSLog` en attendant les notifications (Phase 5). Build OK (`BUILD SUCCEEDED`).
 
 **Notes / décisions en cours de route** :
 
@@ -185,8 +185,9 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - Chaînes UI en français en dur pour le moment ; la localisation EN/FR/ES arrive en Phase 6 via String Catalog.
 - `xcodebuild` nécessite `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (la CLI pointe par défaut sur les Command Line Tools).
 - Détection d'annulation dans `ScreenCaptureService` via `NSPasteboard.changeCount` (snapshot avant/après) plutôt que de vider le presse-papier : on ne perturbe pas le contenu existant si l'utilisateur fait Échap.
-- Le bouton « Debug : tester la capture » est temporaire — il sera retiré en Phase 4 quand le vrai bouton « Capturer une zone » sera câblé au `CaptureCoordinator`.
 - `stderr` de `screencapture` capturé via `Pipe` → distingue annulation utilisateur (stderr vide) d'un échec réel (`CaptureError.screenCaptureFailed`).
 - `DEVELOPMENT_TEAM = 7C2S8B9978` dans `project.pbxproj` (Debug & Release) → signature stable entre les rebuilds, indispensable pour que TCC conserve la permission Enregistrement d'écran en dev.
 - `OCRService` : tri vertical via `boundingBox.midY` décroissant — Vision utilise des coordonnées normalisées avec origine en bas-gauche, donc un `midY` élevé correspond au haut de l'image. Exécution du `VNImageRequestHandler.perform` sur `DispatchQueue.global(.userInitiated)` pour ne pas bloquer l'appelant ; `VNRecognizedTextObservation` vide → `OCRError.noTextFound`.
 - Test unitaire du Phase 3 reporté en Phase 10 : la target `OCRSelectionTests` n'existe pas encore. Validation manuelle via le bouton debug suffisante pour le MVP.
+- `CaptureCoordinator` placé à la racine de `OCRSelection/` (et non sous `Services/`) : il orchestre les services mais n'en est pas un. Instance unique détenue par `OCRSelectionApp` (`let coordinator = CaptureCoordinator()`) — Phase 8 réutilisera cette même instance pour le raccourci global.
+- Phase 4 : feedback utilisateur volontairement absent (pas d'alerte de succès, `NSLog` sur erreurs) — les notifications système arrivent en Phase 5 et remplaceront les `NSLog`. `CaptureError.userCancelled` reste silencieux de manière permanente (silence attendu sur Échap, cf. Phase 5 du plan).

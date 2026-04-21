@@ -2,17 +2,12 @@ import SwiftUI
 
 @main
 struct OCRSelectionApp: App {
+    private let coordinator = CaptureCoordinator()
+
     var body: some Scene {
         MenuBarExtra("OCR Selection", systemImage: "text.viewfinder") {
             Button("Capturer une zone") {
-                // Implémenté en Phase 4 (CaptureCoordinator)
-            }
-            .disabled(true)
-
-            Divider()
-
-            Button("Debug : tester la capture + OCR") {
-                Task { await runCaptureDebug() }
+                Task { await runCapture() }
             }
 
             Divider()
@@ -36,51 +31,15 @@ struct OCRSelectionApp: App {
         }
     }
 
-    private func runCaptureDebug() async {
-        let capture = ScreenCaptureService()
-        let ocr = OCRService()
+    private func runCapture() async {
         do {
-            let image = try await capture.captureRegion()
-            let text = try await ocr.recognizeText(in: image)
-            await MainActor.run {
-                showDebugAlert(
-                    title: "OCR réussi",
-                    message: "Image : \(image.width) × \(image.height) px\n\nTexte :\n\(text)"
-                )
-            }
+            try await coordinator.run()
         } catch CaptureError.userCancelled {
-            await MainActor.run {
-                showDebugAlert(title: "Capture annulée", message: "L'utilisateur a appuyé sur Échap.")
-            }
-        } catch CaptureError.screenCaptureFailed(let details) {
-            await MainActor.run {
-                showDebugAlert(
-                    title: "Échec de la capture",
-                    message: "screencapture a échoué. Vérifier la permission Enregistrement d'écran.\n\nDétails :\n\(details)"
-                )
-            }
-        } catch OCRError.noTextFound {
-            await MainActor.run {
-                showDebugAlert(title: "Aucun texte détecté", message: "Vision n'a trouvé aucun texte dans la zone capturée.")
-            }
-        } catch OCRError.visionFailed(let underlying) {
-            await MainActor.run {
-                showDebugAlert(title: "Échec OCR", message: String(describing: underlying))
-            }
+            // Silence attendu quand l'utilisateur appuie sur Échap.
         } catch {
-            await MainActor.run {
-                showDebugAlert(title: "Erreur", message: String(describing: error))
-            }
+            // Les retours utilisateur (succès + erreurs) sont câblés en Phase 5 via UNUserNotificationCenter.
+            NSLog("OCR Selection capture failed: %@", String(describing: error))
         }
-    }
-
-    @MainActor
-    private func showDebugAlert(title: String, message: String) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.alertStyle = .informational
-        alert.runModal()
     }
 }
 
