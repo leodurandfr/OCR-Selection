@@ -70,7 +70,7 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
   - `recognitionLevel = .accurate`
   - Joindre les `VNRecognizedTextObservation` avec `\n` dans l'ordre vertical
 - [x] Enum `OCRError`: `noTextFound`, `visionFailed(Error)`
-- [ ] Test unitaire avec une image fixture contenant du texte connu *(reporté en Phase 10 — la target de tests n'existe pas encore ; validation manuelle via le bouton debug)*
+- [x] Test unitaire avec une image fixture contenant du texte connu *(traité en Phase 10 — image générée à la volée via `CGContext` + `CTLineDraw`, pas de PNG bundlé)*
 
 ## Phase 4 — Écriture dans le presse-papier
 
@@ -140,12 +140,12 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 10 — Tests unitaires
 
-- [ ] Ajouter une target de tests (`OCRSelectionTests`)
-- [ ] Test `OCRService` : OCR sur une image fixture (PNG bundlé) → vérifie le contenu attendu
-- [ ] Test `PasteboardService` : écrire puis relire, vérifier égalité
-- [ ] Test `HistoryService` : ajout au-delà du cap → les anciennes sont supprimées
-- [ ] Test `OCREntry` : création, tri par date
-- [ ] Vérifier que `cmd+U` passe au vert
+- [x] Ajouter une target de tests (`OCRSelectionTests`)
+- [x] Test `OCRService` : OCR sur une image fixture (PNG bundlé) → vérifie le contenu attendu *(fixture générée via `CGContext` + `CTLineDraw` — pas de binaire dans le repo)*
+- [x] Test `PasteboardService` : écrire puis relire, vérifier égalité
+- [x] Test `HistoryService` : ajout au-delà du cap → les anciennes sont supprimées
+- [x] Test `OCREntry` : création, tri par date
+- [x] Vérifier que `cmd+U` passe au vert *(validé via `xcodebuild test` : 9 tests sur 4 suites, `TEST SUCCEEDED`)*
 
 ## Phase 11 — Polish & UX
 
@@ -172,11 +172,9 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 10 — Tests unitaires.
+**Phase en cours** : Phase 11 — Polish & UX.
 
-**Post-phase-9 (retours utilisateur)** : (1) bouton « Effacer l'historique » retiré du menu bar (laisse la section Recents à un rôle purement consultatif) — reste disponible dans l'onglet Historique des préférences. (2) Fenêtre Préférences refactorisée : `TabView` + 3 sous-vues privées → un seul `Form.grouped` scrollable avec 4 `Section` (General, Shortcut, History, About). Raison : 1 seul contrôle par onglet rendait la structure tabulaire disproportionnée. (3) Nouvelle section **About** : `LabeledContent("Designed by") { Link(destination: https://leodurand.com) { Text(verbatim: "leodurand.com") } }`. 2 clés ajoutées au catalogue : `About`, `Designed by` + traduction de `Entries kept` (détecté par Xcode comme clé du Slider label accessibility).
-
-**Dernière phase complétée** : Phase 9 — Historique avec SwiftData. Nouveau `OCRSelection/Models/OCREntry.swift` : `@Model final class OCREntry` avec `id: UUID`, `text: String`, `createdAt: Date`. Nouveau `OCRSelection/Services/HistoryService.swift` (`@MainActor struct`) prenant un `ModelContainer` — `record(_:)` insère une entrée puis appelle `prune(in:)` qui lit le cap via `UserDefaults.standard.integer(forKey: "historyMaxCount")` et `context.delete` les entrées au-delà ; `clear()` fait un `context.delete(model: OCREntry.self)` global. `CaptureCoordinator` : nouvelle dépendance `let history: HistoryService`, appelle `await history.record(text)` après un OCR réussi (skip si texte trim vide), nouvelle méthode `recopy(_ text:)` = copy + `notifySuccess` utilisée depuis les entrées du menu. `AppDelegate` (marqué `@MainActor`) : crée le `ModelContainer(for: OCREntry.self)` dans `init()`, construit le `CaptureCoordinator` avec `HistoryService(container:)`, et enregistre `UserDefaults.standard.register(defaults: ["historyMaxCount": 30])` au plus tôt. `OCRSelectionApp` : le contenu `MenuBarExtra` est extrait dans une view privée `MenuBarContent` (`@Query(sort: \OCREntry.createdAt, order: .reverse)`) avec une section `Section("Recents")` limitée à `entries.prefix(10)` — chaque ligne affiche `"<preview 40 chars> — <relative time named>"` via `Date.formatted(.relative(presentation: .named))` et `Text(verbatim:)` (pas de pollution du catalogue), clic = `coordinator.recopy(text)` ; bouton `"Clear History"` sous la liste. Le container est injecté avec `.modelContainer(appDelegate.container)` sur chaque scene (MenuBarExtra + Settings). Nouvel onglet Historique `HistorySettingsView` : `Form` avec un `Slider(value: Binding<Double>, in: 10...50, step: 5)` + label dynamique `Text("Entries kept: \(maxCount)")` (via `@AppStorage("historyMaxCount") var maxCount: Int = 30`) + bouton destructif `Button("Clear History", role: .destructive)`. 3 clés ajoutées au catalogue : `Recents`, `Clear History`, `Entries kept: %lld` (EN/FR/ES). Build OK (`BUILD SUCCEEDED`).
+**Dernière phase complétée** : Phase 10 — Tests unitaires. Nouvelle target `OCRSelectionTests` (`com.apple.product-type.bundle.unit-test`, bundle ID `com.leodurand.ocr-selection.tests`) hébergée par l'app (`TEST_HOST = $(BUILT_PRODUCTS_DIR)/OCRSelection.app/Contents/MacOS/OCRSelection`, `BUNDLE_LOADER = $(TEST_HOST)`). Ajoutée au `project.pbxproj` en conservant le modèle `PBXFileSystemSynchronizedRootGroup` (pas de liste de fichiers — tout fichier sous `OCRSelectionTests/` est auto-compilé). 4 fichiers de tests utilisant **Swift Testing** (`import Testing`, `@Test`, `#expect`) et `@testable import OCRSelection` : (1) `OCRServiceTests.swift` — rend une image 800×200 avec le texte « Hello World » via `CGContext` + `CTLineDraw` (pas de PNG bundlé — fixture déterministe générée à la volée), OCR, asserte `contains("Hello") && contains("World")` ; (2) `PasteboardServiceTests.swift` (`@MainActor struct`) — round-trip (copy → `NSPasteboard.general.string(forType: .string)`) + remplacement du contenu précédent ; (3) `HistoryServiceTests.swift` (`@MainActor struct`) — 3 tests sur un `ModelContainer(for: OCREntry.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))`. Le test `pruningEnforcesMaxCount` pré-insère 5 entrées avec `createdAt` explicite (`Date(timeIntervalSince1970: Double(i))`) via `context.insert` direct, puis appelle `HistoryService.record("newest")` pour déclencher le prune → asserte que seules les 3 plus récentes survivent ; (4) `OCREntryTests.swift` — valeurs par défaut (bornes temporelles), valeurs explicites, tri par `createdAt` décroissant. Scheme mis à jour : nouvelle `BuildActionEntry` (buildForTesting seulement) + `TestableReference` pointant sur la target de tests. `xcodebuild test -destination 'platform=macOS'` : 9 tests dans 4 suites, `TEST SUCCEEDED` en 0,33 s.
 
 **Notes / décisions en cours de route** :
 
@@ -207,3 +205,10 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - Phase 9 : le menu bar est refactoré dans une View privée `MenuBarContent` pour pouvoir y utiliser `@Query` et `@Environment(\.modelContext)` — SwiftUI ne peut pas injecter le `ModelContext` directement dans un closure de `MenuBarExtra { … }` sans passer par un type View. Le clic sur une entrée récente capture `entry.text` côté main actor (`let text = entry.text` hors `Task`), puis `Task { await coordinator.recopy(text) }` évite de passer l'instance `@Model` (non-Sendable) à un contexte asynchrone non-isolé.
 - Phase 9 : pour les labels de lignes récentes, on utilise `Text(verbatim: "<preview> — <relative time>")` plutôt que `Button(_:action:)` avec interpolation → pas d'ajout au String Catalog d'une clé `"%@ — %@"` inutile. La localisation provient de `Date.formatted(.relative(presentation: .named))` qui gère "il y a 2 min" / "2 minutes ago" via la locale courante.
 - Phase 9 : `clearHistory()` appelle `context.delete(model: OCREntry.self)` puis `context.save()` — `delete(model:)` supprime en batch sans avoir à fetch+iter+delete, ce qui évite de matérialiser 30 objets pour rien. Dupliqué dans `MenuBarContent` et `HistorySettingsView` (3 lignes chaque) — pas de helper partagé tant que c'est si court.
+- Phase 10 : framework de tests choisi = **Swift Testing** (pas XCTest). Xcode 26.3 / Swift 6, macroset natif, plus expressif (`@Test`, `#expect(...)`) et pas de boilerplate de classe `XCTestCase`. Le bundle charge `libXCTestSwiftSupport.dylib` automatiquement via `TEST_HOST` + `BUNDLE_LOADER` ; aucune autre dépendance à linker côté test.
+- Phase 10 : fixture OCR **générée en mémoire** (`CGContext` + `NSAttributedString` + `CTLineDraw`) plutôt qu'un PNG bundlé. Raison : évite un binaire dans le repo, rend le test auto-contenu, et la génération à 80pt de NSFont.systemFont (.bold) est reconnue de façon fiable par Vision (testé à `recognitionLevel = .accurate` + `usesLanguageCorrection = true`).
+- Phase 10 : `HistoryService` lit `UserDefaults.standard` (cf. Phase 9) — les tests setent la clé `historyMaxCount` en début de test, avec `defer { UserDefaults.standard.removeObject(forKey: ...) }` pour ne pas polluer les defaults du host app entre runs. Pas d'injection d'un `UserDefaults` custom dans `HistoryService` (YAGNI — la ceinture-bretelles via defer suffit).
+- Phase 10 : `pruningEnforcesMaxCount` insère les entrées pré-existantes directement via `context.insert(OCREntry(createdAt: Date(timeIntervalSince1970: Double(i))))` plutôt que via `HistoryService.record()`. Raison : donne des timestamps déterministes (pas de collision possible à 5 `Date.now` consécutifs), et on teste isolément le comportement de prune quand il est déclenché par un nouvel ajout.
+- Phase 10 : `PBXFileSystemSynchronizedRootGroup` étendu à `OCRSelectionTests/` — cohérent avec la décision Phase 0 (`PBXSourcesBuildPhase.files = ()` pour les deux targets, ajout de fichiers = simple création dans le dossier).
+- Phase 10 : nouvelles sections `PBXContainerItemProxy` et `PBXTargetDependency` ajoutées au pbxproj (absentes jusque-là, puisqu'il n'y avait qu'une seule target). `PBXTargetDependency` garantit que l'app host est reconstruite avant le bundle de tests.
+- Phase 10 : scheme partagé — ajout d'une `BuildActionEntry` avec `buildForTesting = "YES"` seulement (pas de Run/Profile/Archive/Analyze pour le bundle .xctest) + `TestableReference` dans `<Testables>`. `⌘U` dans Xcode déclenche désormais la suite entière.
