@@ -6,6 +6,10 @@
 	objectVersion = 71;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1400000000000000000000C1 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 1300000000000000000000C1 /* KeyboardShortcuts */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		0A0000000000000000000001 /* OCRSelection.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OCRSelection.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -19,6 +23,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1400000000000000000000C1 /* KeyboardShortcuts in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -61,6 +66,7 @@
 			);
 			name = OCRSelection;
 			packageProductDependencies = (
+				1300000000000000000000C1 /* KeyboardShortcuts */,
 			);
 			productName = OCRSelection;
 			productReference = 0A0000000000000000000001 /* OCRSelection.app */;
@@ -93,6 +99,9 @@
 			);
 			mainGroup = 0D0000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1200000000000000000000C1 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+			);
 			productRefGroup = 0D0000000000000000000002 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -321,6 +330,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1200000000000000000000C1 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1300000000000000000000C1 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1200000000000000000000C1 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0F0000000000000000000001 /* Project object */;
 }

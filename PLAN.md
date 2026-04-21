@@ -114,13 +114,13 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## Phase 8 — Raccourci global
 
-- [ ] Ajouter le package SPM `https://github.com/sindresorhus/KeyboardShortcuts`
-- [ ] `KeyboardShortcuts.Name.captureRegion` avec défaut `.init(.two, modifiers: [.command, .shift])`
-- [ ] Dans `OCRSelectionApp` : `KeyboardShortcuts.onKeyUp(for: .captureRegion) { ... }` → appelle `CaptureCoordinator`
-- [ ] Onglet **Raccourci** :
+- [x] Ajouter le package SPM `https://github.com/sindresorhus/KeyboardShortcuts`
+- [x] `KeyboardShortcuts.Name.captureRegion` avec défaut `.init(.two, modifiers: [.command, .shift])`
+- [x] Dans `OCRSelectionApp` : `KeyboardShortcuts.onKeyUp(for: .captureRegion) { ... }` → appelle `CaptureCoordinator`
+- [x] Onglet **Raccourci** :
   - `KeyboardShortcuts.Recorder("Capturer une zone", name: .captureRegion)`
   - Bouton « Réinitialiser » qui appelle `KeyboardShortcuts.reset(.captureRegion)`
-- [ ] Tester : le raccourci fonctionne même quand une autre app a le focus
+- [ ] Tester : le raccourci fonctionne même quand une autre app a le focus *(validation manuelle à faire par l'utilisateur — build OK)*
 
 ## Phase 9 — Historique avec SwiftData
 
@@ -172,9 +172,9 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 
 ## État actuel
 
-**Phase en cours** : Phase 8 — Raccourci global.
+**Phase en cours** : Phase 9 — Historique avec SwiftData.
 
-**Dernière phase complétée** : Phase 7 — Fenêtre Préférences (structure). Nouveau `OCRSelection/Preferences/PreferencesView.swift` : `TabView` à 3 onglets (`Général`/`gear`, `Raccourci`/`command`, `Historique`/`clock`), frame fixe 480×260. Onglet **Général** expose un `Toggle("Launch at login")` câblé à `SMAppService.mainApp.register()/unregister()` (framework `ServiceManagement`), état initial lu dans `.onAppear` depuis `SMAppService.mainApp.status == .enabled`, `onChange` applique la bascule et log l'erreur éventuelle via `NSLog`. Onglets Raccourci/Historique : simples `Text(verbatim:)` secondaires en placeholder (à remplacer Phases 8 & 9). Le placeholder `private struct PreferencesView` supprimé de `OCRSelectionApp.swift` au profit du nouveau fichier. 4 clés ajoutées au catalogue : `General`, `Shortcut`, `History`, `Launch at login` (EN/FR/ES). Build OK (`BUILD SUCCEEDED`).
+**Dernière phase complétée** : Phase 8 — Raccourci global. Package SPM `sindresorhus/KeyboardShortcuts` 2.4.0 (upToNextMajorVersion) ajouté manuellement au `project.pbxproj` : sections `PBXBuildFile`, `XCRemoteSwiftPackageReference`, `XCSwiftPackageProductDependency` créées + `packageReferences`/`packageProductDependencies`/Frameworks build phase mis à jour. Nouveau `OCRSelection/KeyboardShortcuts+Names.swift` : `extension KeyboardShortcuts.Name { static let captureRegion = Self("captureRegion", default: .init(.two, modifiers: [.command, .shift])) }`. `OCRSelectionApp.swift` refactoré : `CaptureCoordinator` déplacé sur `AppDelegate` (propriété `let coordinator`) pour partager l'instance entre le menu bar et le handler global ; `applicationDidFinishLaunching` enregistre `KeyboardShortcuts.onKeyUp(for: .captureRegion) { [coordinator] in Task { await coordinator.run() } }`. Le bouton « Capture Area » du menu appelle désormais `appDelegate.coordinator.run()`. `ShortcutSettingsView` : `Form` avec `LabeledContent("Capture Area") { KeyboardShortcuts.Recorder(for: .captureRegion) }` + `Button("Reset to Default") { KeyboardShortcuts.reset(.captureRegion) }`. 1 clé ajoutée au catalogue : `Reset to Default` (EN/FR/ES). Build OK (`BUILD SUCCEEDED`).
 
 **Notes / décisions en cours de route** :
 
@@ -197,3 +197,6 @@ Application macOS de barre de menu qui capture une zone d'écran, en extrait le 
 - Phase 6 : pas de clé `INFOPLIST_KEY_CFBundleLocalizations` (non supportée par Xcode avec `GENERATE_INFOPLIST_FILE = YES`). À la place, on s'appuie sur la mécanique recommandée par Apple : `knownRegions` + `.xcstrings` → Xcode compile automatiquement des `.lproj` dans le bundle, et le système détermine `CFBundleLocalizations` à partir de ces répertoires à l'exécution. Effet identique à une clé manuelle. `CFBundleDevelopmentRegion = en` est écrit par Xcode à partir de `developmentRegion = en` du `project.pbxproj` (déjà présent).
 - Phase 6 : chaînes UI passées en anglais comme langue source (le projet a `developmentRegion = en` depuis la Phase 0). `Button("Capture Area")` / `Text("Preferences…")` / `Button("Quit OCR Selection")` — SwiftUI traite les littéraux comme `LocalizedStringKey` et les résout via le catalogue. Dans `NotificationService`, `String(localized: "…")` car on est en contexte impératif (pas de `LocalizedStringKey` implicite). Le label `MenuBarExtra("OCR Selection", …)` reste inchangé : c'est le nom de marque, pas localisé.
 - Phase 7 : `PreferencesView` sort de `OCRSelectionApp.swift` vers `Preferences/PreferencesView.swift` (les sous-vues `GeneralSettingsView`/`ShortcutSettingsView`/`HistorySettingsView` sont `private` dans le même fichier — pas de fichier séparé tant qu'elles restent légères). La scene `Settings { PreferencesView() }` n'a pas changé : `SettingsLink` continue de l'ouvrir. `SMAppService.mainApp` suffit pour un Login Item d'app principale (pas besoin de helper tool ni d'agent LaunchDaemon). L'état initial du `Toggle` est synchronisé via `.onAppear` : utiliser un initializer `@State = SMAppService.mainApp.status == .enabled` serait évalué trop tôt (la view struct est recréée à chaque changement de parent, l'init @State ne se déclenche qu'à la première apparition — OK, mais `.onAppear` rend l'intention plus explicite et permet de re-synchroniser si l'utilisateur modifie l'état depuis Réglages Système). Les placeholders Raccourci/Historique utilisent `Text(verbatim:)` pour éviter d'ajouter des clés transitoires au catalogue — seront remplacés en Phases 8 & 9.
+- Phase 8 : SPM ajouté manuellement au `project.pbxproj` (pas d'UI Xcode dispo en mode CLI) — 3 nouvelles sections (`XCRemoteSwiftPackageReference`, `XCSwiftPackageProductDependency`, `PBXBuildFile`) + mises à jour de `packageReferences` (PBXProject), `packageProductDependencies` (PBXNativeTarget) et du Frameworks build phase. `Package.resolved` vit dans `*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/` — déjà ignoré par `.gitignore` (cohérent avec une app solo : chaque checkout re-résout).
+- Phase 8 : `CaptureCoordinator` déplacé de `OCRSelectionApp` (struct) vers `AppDelegate` (classe). Raison : le handler `KeyboardShortcuts.onKeyUp` doit s'enregistrer après `applicationDidFinishLaunching` (sinon le moniteur d'événements NSEvent peut être installé avant que le run loop soit prêt), et il faut que le menu bar et le handler global partagent la *même* instance. Alternative écartée : `init()` de la struct App — appelée trop tôt pour enregistrer un monitor système. Référence via `appDelegate.coordinator` dans le body SwiftUI (l'adaptor `@NSApplicationDelegateAdaptor` garantit que l'AppDelegate existe avant le premier rendu du body).
+- Phase 8 : l'API `KeyboardShortcuts.Recorder` a deux overloads — `init(_ title:, name:)` et `init(for:)`. On utilise `Recorder(for: .captureRegion)` dans un `LabeledContent("Capture Area") { … }` pour que le label suive automatiquement la taille du Form macOS (aligné à gauche, recorder aligné à droite), au lieu du label intégré du Recorder qui n'a pas le même comportement dans `.grouped`. Même rendu visuel, plus cohérent avec le reste des préférences.

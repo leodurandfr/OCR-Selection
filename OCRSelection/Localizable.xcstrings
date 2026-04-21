@@ -133,7 +133,11 @@
         }
       }
     },
+    "OCR Selection" : {
+
+    },
     "Preferences" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -177,24 +181,24 @@
         }
       }
     },
-    "Shortcut" : {
+    "Reset to Default" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shortcut"
+            "value" : "Reset to Default"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Atajo"
+            "value" : "Restablecer por defecto"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Raccourci"
+            "value" : "Réinitialiser"
           }
         }
       }
@@ -217,6 +221,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quitter OCR Selection"
+          }
+        }
+      }
+    },
+    "Shortcut" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shortcut"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atajo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raccourci"
           }
         }
       }

@@ -1,14 +1,14 @@
+import KeyboardShortcuts
 import SwiftUI
 
 @main
 struct OCRSelectionApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    private let coordinator = CaptureCoordinator()
 
     var body: some Scene {
         MenuBarExtra("OCR Selection", systemImage: "text.viewfinder") {
             Button("Capture Area") {
-                Task { await coordinator.run() }
+                Task { await appDelegate.coordinator.run() }
             }
 
             Divider()
@@ -34,9 +34,14 @@ struct OCRSelectionApp: App {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    let coordinator = CaptureCoordinator()
     private let notifications = NotificationService()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { await notifications.requestAuthorization() }
+
+        KeyboardShortcuts.onKeyUp(for: .captureRegion) { [coordinator] in
+            Task { await coordinator.run() }
+        }
     }
 }

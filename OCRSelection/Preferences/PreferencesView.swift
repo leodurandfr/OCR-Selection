@@ -1,3 +1,4 @@
+import KeyboardShortcuts
 import ServiceManagement
 import SwiftUI
 
@@ -55,9 +56,16 @@ private struct GeneralSettingsView: View {
 
 private struct ShortcutSettingsView: View {
     var body: some View {
-        Text(verbatim: "Shortcut settings — coming in Phase 8")
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Form {
+            LabeledContent("Capture Area") {
+                KeyboardShortcuts.Recorder(for: .captureRegion)
+            }
+
+            Button("Reset to Default") {
+                KeyboardShortcuts.reset(.captureRegion)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 
