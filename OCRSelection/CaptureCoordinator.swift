@@ -1,26 +1,47 @@
-import AppKit
 import Foundation
 
+/// Orchestrates the capture pipeline and maps typed errors to user-facing outcomes.
+/// Backend-agnostic: it depends only on the capture/OCR/pasteboard/notification/history
+/// seams, so the ScreenCaptureKit backend swaps in without changing this code, and the
+/// branches below can be exercised with stubs in tests.
+@MainActor
 struct CaptureCoordinator {
-    var screenCapture = ScreenCaptureService()
-    var ocr = OCRService()
-    var pasteboard = PasteboardService()
-    var notifications = NotificationService()
-    let history: HistoryService
+    let screenCapture: any ScreenCapturing
+    let ocr: any TextRecognizing
+    let pasteboard: any Pasteboarding
+    let notifications: any Notifying
+    let history: any HistoryRecording
+    let permission: any PermissionPresenting
 
     func run() async {
+        // On the native CLI path this spans OCR + paste + history: the selection happens
+        // inside the external screencapture process, which has already exited by here.
+        let signpost = PerfLog.signposter.beginInterval("pipeline")
+        defer { PerfLog.signposter.endInterval("pipeline", signpost) }
+        let clock = ContinuousClock()
         do {
             let image = try await screenCapture.captureRegion()
+            let ocrStart = clock.now
             let text = try await ocr.recognizeText(in: image)
-            pasteboard.copyText(text)
-            if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                await history.record(text)
+            let ocrMs = String(format: "%.1f", PerfLog.milliseconds(clock.now - ocrStart))
+            PerfLog.logger.info("OCR completed in \(ocrMs, privacy: .public) ms")
+
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                // Vision can return whitespace-only results; treat them as "no text"
+                // instead of copying a blank string and claiming success.
+                await notifications.notifyNoText()
+                return
             }
-            await notifications.notifySuccess(preview: text)
+            // Use the trimmed text so stray leading/trailing whitespace from OCR never
+            // lands on the clipboard or in history.
+            pasteboard.copyText(trimmed)
+            history.record(trimmed)
+            await notifications.notifySuccess(preview: trimmed)
         } catch CaptureError.userCancelled {
             // Silence volontaire : l'utilisateur a appuyé sur Échap.
-        } catch CaptureError.screenRecordingPermissionDenied {
-            await Self.presentScreenRecordingAlert()
+        } catch CaptureError.permissionDenied {
+            await permission.presentScreenRecordingDenied()
         } catch OCRError.noTextFound {
             await notifications.notifyNoText()
         } catch OCRError.visionFailed(let underlying) {
@@ -33,25 +54,8 @@ struct CaptureCoordinator {
     }
 
     func recopy(_ text: String) async {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         pasteboard.copyText(text)
         await notifications.notifySuccess(preview: text)
-    }
-
-    @MainActor
-    private static func presentScreenRecordingAlert() {
-        let alert = NSAlert()
-        alert.messageText = String(localized: "Screen Recording permission required")
-        alert.informativeText = String(
-            localized: "OCR Selection needs the Screen Recording permission to capture your screen. Open System Settings to grant it."
-        )
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: String(localized: "Open System Settings"))
-        alert.addButton(withTitle: String(localized: "Cancel"))
-        NSApp.activate(ignoringOtherApps: true)
-        let response = alert.runModal()
-        guard response == .alertFirstButtonReturn else { return }
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-            NSWorkspace.shared.open(url)
-        }
     }
 }

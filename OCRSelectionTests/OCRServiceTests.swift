@@ -4,6 +4,7 @@ import CoreText
 import Testing
 @testable import OCRSelection
 
+@MainActor
 struct OCRServiceTests {
     @Test func recognizesKnownText() async throws {
         let image = try renderFixture(text: "Hello World")

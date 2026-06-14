@@ -5,7 +5,7 @@ import SwiftUI
 
 struct PreferencesView: View {
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("historyMaxCount") private var maxCount: Int = 30
+    @AppStorage(AppSettings.historyMaxCountKey) private var maxCount: Int = AppSettings.historyMaxCountDefault
     @State private var launchAtLogin = false
 
     var body: some View {
@@ -32,12 +32,16 @@ struct PreferencesView: View {
             Section("History") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Entries kept: \(maxCount)")
-                    Slider(value: sliderBinding, in: 10...50, step: 5) {
+                    Slider(
+                        value: sliderBinding,
+                        in: Double(AppSettings.historyMaxCountRange.lowerBound)...Double(AppSettings.historyMaxCountRange.upperBound),
+                        step: Double(AppSettings.historyMaxCountStep)
+                    ) {
                         Text("Entries kept")
                     } minimumValueLabel: {
-                        Text(verbatim: "10")
+                        Text(verbatim: "\(AppSettings.historyMaxCountRange.lowerBound)")
                     } maximumValueLabel: {
-                        Text(verbatim: "50")
+                        Text(verbatim: "\(AppSettings.historyMaxCountRange.upperBound)")
                     }
                     .labelsHidden()
                     .accessibilityLabel(Text("Entries kept"))

@@ -1,7 +1,8 @@
 import Foundation
 import UserNotifications
 
-struct NotificationService {
+@MainActor
+struct NotificationService: Notifying {
     private var center: UNUserNotificationCenter { .current() }
 
     func requestAuthorization() async {
@@ -40,11 +41,6 @@ struct NotificationService {
     }
 
     private static func preview(of text: String) -> String {
-        let cleaned = text
-            .replacingOccurrences(of: "\n", with: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard cleaned.count > 50 else { return cleaned }
-        let cutoff = cleaned.index(cleaned.startIndex, offsetBy: 50)
-        return cleaned[..<cutoff] + "…"
+        text.previewSnippet(maxLength: 50)
     }
 }

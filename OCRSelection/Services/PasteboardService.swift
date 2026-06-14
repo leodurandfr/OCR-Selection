@@ -1,6 +1,7 @@
 import AppKit
 
-struct PasteboardService {
+@MainActor
+struct PasteboardService: Pasteboarding {
     func copyText(_ text: String) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()

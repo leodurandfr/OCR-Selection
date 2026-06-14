@@ -28,7 +28,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let notifications = NotificationService()
 
     override init() {
-        UserDefaults.standard.register(defaults: ["historyMaxCount": 30])
+        UserDefaults.standard.register(
+            defaults: [AppSettings.historyMaxCountKey: AppSettings.historyMaxCountDefault]
+        )
         let container: ModelContainer
         do {
             container = try ModelContainer(for: OCREntry.self)
@@ -37,7 +39,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         self.container = container
         self.coordinator = CaptureCoordinator(
-            history: HistoryService(container: container)
+            screenCapture: ScreenCaptureService(),
+            ocr: OCRService(),
+            pasteboard: PasteboardService(),
+            notifications: NotificationService(),
+            history: HistoryService(container: container),
+            permission: PermissionPresenter()
         )
         super.init()
     }
@@ -45,7 +52,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { await notifications.requestAuthorization() }
 
-        KeyboardShortcuts.onKeyUp(for: .captureRegion) { [coordinator] in
+        // Fire on key-DOWN so the capture starts the instant the chord is recognised,
+        // rather than waiting for the user to release the keys.
+        KeyboardShortcuts.onKeyDown(for: .captureRegion) { [coordinator] in
             Task { await coordinator.run() }
         }
     }
@@ -96,13 +105,8 @@ private struct MenuBarContent: View {
     }
 
     private static func menuLabel(for entry: OCREntry) -> String {
-        let cleaned = entry.text
-            .replacingOccurrences(of: "\n", with: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let truncated: String = cleaned.count > 40
-            ? String(cleaned.prefix(40)) + "…"
-            : cleaned
+        let preview = entry.text.previewSnippet(maxLength: 40)
         let relative = entry.createdAt.formatted(.relative(presentation: .named))
-        return "\(truncated) — \(relative)"
+        return "\(preview) — \(relative)"
     }
 }
