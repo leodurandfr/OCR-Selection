@@ -1,10 +1,10 @@
 import KeyboardShortcuts
 import ServiceManagement
-import SwiftData
 import SwiftUI
 
 struct PreferencesView: View {
-    @Environment(\.modelContext) private var modelContext
+    let history: HistoryStore
+
     @AppStorage(AppSettings.historyMaxCountKey) private var maxCount: Int = AppSettings.historyMaxCountDefault
     @State private var launchAtLogin = false
 
@@ -97,7 +97,6 @@ struct PreferencesView: View {
     }
 
     private func clearHistory() {
-        try? modelContext.delete(model: OCREntry.self)
-        try? modelContext.save()
+        history.clear()
     }
 }

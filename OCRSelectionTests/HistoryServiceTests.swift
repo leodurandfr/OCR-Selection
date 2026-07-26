@@ -57,6 +57,21 @@ struct HistoryServiceTests {
         #expect(entries.isEmpty)
     }
 
+    @Test func recentItemsAreNewestFirstAndBounded() throws {
+        defer { UserDefaults.standard.removeObject(forKey: "historyMaxCount") }
+        UserDefaults.standard.set(30, forKey: "historyMaxCount")
+        let container = try makeContainer()
+        let context = container.mainContext
+        for i in 0..<6 {
+            context.insert(OCREntry(text: "entry \(i)", createdAt: Date(timeIntervalSince1970: Double(i))))
+        }
+        try context.save()
+
+        let items = HistoryService(container: container).recentItems(limit: 3)
+
+        #expect(items.map(\.text) == ["entry 5", "entry 4", "entry 3"])
+    }
+
     private func makeContainer() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         return try ModelContainer(for: OCREntry.self, configurations: configuration)

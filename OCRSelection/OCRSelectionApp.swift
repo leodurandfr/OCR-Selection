@@ -8,15 +8,15 @@ struct OCRSelectionApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
+        // No `.modelContainer` here: the menu reads `HistoryStore`'s value snapshot, so
+        // SwiftData is never touched while SwiftUI re-evaluates the menu content.
         MenuBarExtra("OCR Selection", systemImage: "text.viewfinder") {
-            MenuBarContent(coordinator: appDelegate.coordinator)
-                .modelContainer(appDelegate.container)
+            MenuBarContent(coordinator: appDelegate.coordinator, history: appDelegate.history)
         }
         .menuBarExtraStyle(.menu)
 
         Settings {
-            PreferencesView()
-                .modelContainer(appDelegate.container)
+            PreferencesView(history: appDelegate.history)
         }
     }
 }
@@ -24,6 +24,7 @@ struct OCRSelectionApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let container: ModelContainer
+    let history: HistoryStore
     let coordinator: CaptureCoordinator
     private let notifications = NotificationService()
 
@@ -31,25 +32,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.register(
             defaults: [AppSettings.historyMaxCountKey: AppSettings.historyMaxCountDefault]
         )
-        let container: ModelContainer
+        // A failure here used to be a `fatalError`. Losing the store is not worth taking the
+        // app down with it: fall back to an in-memory container so captures keep working,
+        // and leave a persisted log line explaining why history looks empty.
+        var container: ModelContainer
         do {
-            container = try ModelContainer(for: OCREntry.self)
+            container = try HistoryContainer.make()
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            PerfLog.health.error("persistent history unavailable, falling back to memory: \(String(describing: error), privacy: .public)")
+            container = try! ModelContainer(
+                for: OCREntry.self,
+                configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            )
         }
         self.container = container
+        let history = HistoryStore(service: HistoryService(container: container))
+        self.history = history
         self.coordinator = CaptureCoordinator(
             screenCapture: ScreenCaptureService(),
             ocr: OCRService(),
             pasteboard: PasteboardService(),
             notifications: NotificationService(),
-            history: HistoryService(container: container),
+            history: history,
             permission: PermissionPresenter()
         )
         super.init()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        PerfLog.health.notice("launched version=\(version, privacy: .public) build=\(build, privacy: .public)")
+        HealthMonitor.shared.start()
+
         Task { await notifications.requestAuthorization() }
 
         // Fire on key-DOWN so the capture starts the instant the chord is recognised,
@@ -61,24 +76,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 private struct MenuBarContent: View {
-    @Query(sort: \OCREntry.createdAt, order: .reverse) private var entries: [OCREntry]
-
     let coordinator: CaptureCoordinator
+    let history: HistoryStore
 
     var body: some View {
+        // Counted, not free: a runaway count in the health heartbeat is the signature of
+        // SwiftUI rebuilding this menu in a loop.
+        let _ = HealthMonitor.shared.noteMenuRender()
+
         Button("Capture Area") {
             Task { await coordinator.run() }
         }
 
-        if !entries.isEmpty {
+        if !history.items.isEmpty {
             Divider()
             Section("Recents") {
-                ForEach(Array(entries.prefix(10))) { entry in
+                ForEach(history.items) { item in
                     Button {
-                        let text = entry.text
+                        let text = item.text
                         Task { await coordinator.recopy(text) }
                     } label: {
-                        Text(verbatim: Self.menuLabel(for: entry))
+                        Text(verbatim: Self.menuLabel(for: item))
                     }
                 }
             }
@@ -104,9 +122,18 @@ private struct MenuBarContent: View {
         .keyboardShortcut("q")
     }
 
-    private static func menuLabel(for entry: OCREntry) -> String {
-        let preview = entry.text.previewSnippet(maxLength: 40)
-        let relative = entry.createdAt.formatted(.relative(presentation: .named))
+    /// Cached: `Date.formatted(.relative(…))` builds a formatter on every call, and this
+    /// runs once per entry per body evaluation.
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.dateTimeStyle = .named
+        formatter.unitsStyle = .full
+        return formatter
+    }()
+
+    private static func menuLabel(for item: HistoryItem) -> String {
+        let preview = item.text.previewSnippet(maxLength: 40)
+        let relative = relativeFormatter.localizedString(for: item.createdAt, relativeTo: Date())
         return "\(preview) — \(relative)"
     }
 }
