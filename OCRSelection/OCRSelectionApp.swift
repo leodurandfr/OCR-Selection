@@ -78,6 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 private struct MenuBarContent: View {
     let coordinator: CaptureCoordinator
     let history: HistoryStore
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         // Counted, not free: a runaway count in the health heartbeat is the signature of
@@ -104,8 +105,9 @@ private struct MenuBarContent: View {
 
         Divider()
 
-        SettingsLink {
-            Text("Preferences…")
+        // Not `SettingsLink`: it opened the window behind the frontmost app.
+        Button("Preferences…") {
+            Task { await SettingsWindowPresenter.show(using: openSettings) }
         }
         .keyboardShortcut(",", modifiers: .command)
 
