@@ -74,6 +74,10 @@ struct CaptureCoordinator {
         } catch OCRError.noTextFound {
             await notifications.notifyNoText()
         } catch OCRError.visionFailed(let underlying) {
+            // In practice this is `e5rtError … 13`: macOS purged Vision's compiled model
+            // from ~/Library/Caches (it does so when the disk is nearly full) while it was
+            // loaded, and every recognition fails until the process restarts. Retrying in
+            // process, even pinned to the CPU, fails the same way — hence the relaunch hint.
             PerfLog.logger.error("OCR failed: \(String(describing: underlying), privacy: .public)")
             await notifications.notifyOCRFailed()
         } catch {

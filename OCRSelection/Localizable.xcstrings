@@ -601,24 +601,24 @@
         }
       }
     },
-    "The capture succeeded but text recognition failed." : {
+    "The capture succeeded but text recognition failed. Quit and relaunch OCR Selection." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The capture succeeded but text recognition failed."
+            "value" : "The capture succeeded but text recognition failed. Quit and relaunch OCR Selection."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La captura se realizó correctamente pero falló el reconocimiento de texto."
+            "value" : "La captura se realizó correctamente pero falló el reconocimiento de texto. Cierra y vuelve a abrir OCR Selection."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La capture a réussi mais la reconnaissance du texte a échoué."
+            "value" : "La capture a réussi mais la reconnaissance du texte a échoué. Quittez puis relancez OCR Selection."
           }
         }
       }

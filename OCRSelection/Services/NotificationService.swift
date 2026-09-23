@@ -20,7 +20,7 @@ struct NotificationService: Notifying {
     func notifyOCRFailed() async {
         await deliver(
             title: String(localized: "Unable to read text"),
-            body: String(localized: "The capture succeeded but text recognition failed.")
+            body: String(localized: "The capture succeeded but text recognition failed. Quit and relaunch OCR Selection.")
         )
     }
 
