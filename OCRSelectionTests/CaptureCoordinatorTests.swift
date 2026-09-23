@@ -62,6 +62,7 @@ struct CaptureCoordinatorTests {
         await first.value
 
         #expect(capture.callCount == 1)
+        #expect(env.notifications.events == [.busy, .success("hello")])
         #expect(env.pasteboard.copied == ["hello"])
         #expect(env.history.recorded == ["hello"])
 
@@ -150,12 +151,13 @@ private struct Env {
 }
 
 @MainActor private final class SpyNotifications: Notifying {
-    enum Event: Equatable { case success(String), noText, ocrFailed, failure }
+    enum Event: Equatable { case success(String), noText, ocrFailed, failure, busy }
     var events: [Event] = []
     func notifySuccess(preview text: String) async { events.append(.success(text)) }
     func notifyNoText() async { events.append(.noText) }
     func notifyOCRFailed() async { events.append(.ocrFailed) }
     func notifyFailure() async { events.append(.failure) }
+    func notifyBusy() { events.append(.busy) }
 }
 
 @MainActor private final class SpyHistory: HistoryRecording {

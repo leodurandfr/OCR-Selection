@@ -22,6 +22,7 @@ struct CaptureCoordinator {
         // then overwrote the clipboard and added its own history entry. Drop re-entry.
         guard !gate.isBusy else {
             PerfLog.logger.notice("capture ignored: previous capture still in progress")
+            notifications.notifyBusy()
             return
         }
         gate.isBusy = true

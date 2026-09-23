@@ -25,6 +25,8 @@ import CoreGraphics
     func notifyNoText() async
     func notifyOCRFailed() async
     func notifyFailure() async
+    /// A capture request arrived while one was still running and was dropped.
+    func notifyBusy()
 }
 
 @MainActor protocol HistoryRecording {

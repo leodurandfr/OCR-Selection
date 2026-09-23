@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import UserNotifications
 
 @MainActor
@@ -26,6 +26,12 @@ struct NotificationService: Notifying {
 
     func notifyFailure() async {
         await deliver(title: String(localized: "Capture failed"), body: "")
+    }
+
+    /// A beep rather than a banner: it answers the key press immediately, and a
+    /// notification would pile up behind the one the running capture is about to post.
+    func notifyBusy() {
+        NSSound.beep()
     }
 
     private func deliver(title: String, body: String) async {
