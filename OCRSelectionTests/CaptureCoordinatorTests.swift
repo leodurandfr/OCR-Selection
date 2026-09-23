@@ -51,6 +51,30 @@ struct CaptureCoordinatorTests {
         #expect(env.notifications.events == [.ocrFailed])
     }
 
+    @Test func runWhileCaptureInProgressIsIgnored() async {
+        let capture = SuspendedScreenCapture()
+        let env = Env(screenCapture: capture, ocr: .success("hello"))
+        let first = Task { await env.coordinator.run() }
+        while !capture.isWaiting { await Task.yield() }
+
+        await env.coordinator.run()
+        capture.finish(with: dummyImage())
+        await first.value
+
+        #expect(capture.callCount == 1)
+        #expect(env.pasteboard.copied == ["hello"])
+        #expect(env.history.recorded == ["hello"])
+
+        // The gate reopens once the first capture has finished.
+        let next = Task { await env.coordinator.run() }
+        while !capture.isWaiting { await Task.yield() }
+        capture.finish(with: dummyImage())
+        await next.value
+        #expect(capture.callCount == 2)
+        #expect(env.pasteboard.copied == ["hello", "hello"])
+        #expect(env.history.recorded == ["hello", "hello"])
+    }
+
     @Test func genericCaptureFailureNotifiesFailure() async {
         let env = Env(capture: .failure(CaptureError.captureFailed(nil)), ocr: .success("unused"))
         await env.coordinator.run()
@@ -69,8 +93,12 @@ private struct Env {
     let coordinator: CaptureCoordinator
 
     init(capture: Result<CGImage, Error>, ocr: Result<String, Error>) {
+        self.init(screenCapture: StubScreenCapture(capture), ocr: ocr)
+    }
+
+    init(screenCapture: any ScreenCapturing, ocr: Result<String, Error>) {
         coordinator = CaptureCoordinator(
-            screenCapture: StubScreenCapture(capture),
+            screenCapture: screenCapture,
             ocr: StubRecognizer(ocr),
             pasteboard: pasteboard,
             notifications: notifications,
@@ -84,6 +112,30 @@ private struct Env {
     private let result: Result<CGImage, Error>
     init(_ result: Result<CGImage, Error>) { self.result = result }
     func captureRegion() async throws -> CGImage { try result.get() }
+}
+
+/// Holds `captureRegion()` open until the test calls `finish(with:)`, standing in for a
+/// user who is still selecting a region (or a slow OCR) when the shortcut fires again.
+@MainActor private final class SuspendedScreenCapture: ScreenCapturing {
+    private(set) var callCount = 0
+    private var continuation: CheckedContinuation<CGImage, Error>?
+    var isWaiting: Bool { continuation != nil }
+
+    func captureRegion() async throws -> CGImage {
+        callCount += 1
+        // Re-entry means the coordinator's gate is broken. Fail fast: overwriting the
+        // pending continuation would leak it and hang the test instead.
+        guard continuation == nil else {
+            Issue.record("captureRegion() re-entered while a capture was pending")
+            throw CaptureError.captureFailed(nil)
+        }
+        return try await withCheckedThrowingContinuation { continuation = $0 }
+    }
+
+    func finish(with image: CGImage) {
+        continuation?.resume(returning: image)
+        continuation = nil
+    }
 }
 
 @MainActor private final class StubRecognizer: TextRecognizing {

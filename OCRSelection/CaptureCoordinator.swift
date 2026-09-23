@@ -12,8 +12,21 @@ struct CaptureCoordinator {
     let notifications: any Notifying
     let history: any HistoryRecording
     let permission: any PermissionPresenting
+    /// A reference type so every copy of this struct (the shortcut handler and the menu
+    /// each hold one) sees the same in-flight state.
+    let gate = CaptureGate()
 
     func run() async {
+        // Pressing the shortcut again while OCR is still working (a cold Vision model can
+        // take ~30 s) used to start a second screencapture session, and each finished run
+        // then overwrote the clipboard and added its own history entry. Drop re-entry.
+        guard !gate.isBusy else {
+            PerfLog.logger.notice("capture ignored: previous capture still in progress")
+            return
+        }
+        gate.isBusy = true
+        defer { gate.isBusy = false }
+
         // On the native CLI path this spans OCR + paste + history: the selection happens
         // inside the external screencapture process, which has already exited by here.
         let signpost = PerfLog.signposter.beginInterval("pipeline")
@@ -73,4 +86,10 @@ struct CaptureCoordinator {
         pasteboard.copyText(text)
         await notifications.notifySuccess(preview: text)
     }
+}
+
+/// Tracks whether a capture is in progress; see `CaptureCoordinator.run()`.
+@MainActor
+final class CaptureGate {
+    var isBusy = false
 }

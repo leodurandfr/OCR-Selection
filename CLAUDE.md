@@ -17,9 +17,10 @@ xcodebuild -scheme OCRSelection -destination 'platform=macOS' build
 # Run all tests
 xcodebuild -scheme OCRSelection -destination 'platform=macOS' test
 
-# Run a single test (Swift Testing path: Target/Suite/method)
+# Run a single test (Swift Testing path: Target/Suite/method() — the parentheses are
+# required: without them nothing runs and xcodebuild still reports TEST SUCCEEDED)
 xcodebuild -scheme OCRSelection -destination 'platform=macOS' test \
-  -only-testing:OCRSelectionTests/HistoryServiceTests/pruningEnforcesMaxCount
+  '-only-testing:OCRSelectionTests/HistoryServiceTests/pruningEnforcesMaxCount()'
 ```
 
 Tests use **Swift Testing** (`import Testing`, `@Test`, `#expect`) — *not* XCTest. Match that style for new tests. To run the app interactively, build & run the `OCRSelection` scheme from Xcode (⌘R) — capture and the global shortcut can't be exercised from a headless `xcodebuild` run.

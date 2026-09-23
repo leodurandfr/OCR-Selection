@@ -13,6 +13,72 @@ struct OCRServiceTests {
         #expect(result.contains("Hello"))
         #expect(result.contains("World"))
     }
+
+    /// The fallback path used when Vision fails on the Neural Engine.
+    @Test func recognizesKnownTextOnCPU() async throws {
+        let image = try renderFixture(text: "Hello World")
+        let result = try await OCRService.visionPass(image, cpuOnly: true)
+        #expect(result.contains("Hello"))
+        #expect(result.contains("World"))
+    }
+
+    @Test func neuralEngineFailureRetriesOnCPUAndStaysThere() async throws {
+        let pass = ScriptedPass([.failure(visionError), .success("first"), .success("second")])
+        let service = OCRService(pass: pass.run)
+        let image = try renderFixture(text: "x")
+
+        #expect(try await service.recognizeText(in: image) == "first")
+        #expect(try await service.recognizeText(in: image) == "second")
+        #expect(pass.cpuOnlyCalls == [false, true, true])
+    }
+
+    @Test func noTextOnCPURetryStillSwitchesToCPU() async throws {
+        let pass = ScriptedPass([.failure(visionError), .failure(OCRError.noTextFound), .success("next")])
+        let service = OCRService(pass: pass.run)
+        let image = try renderFixture(text: "x")
+
+        await #expect(throws: OCRError.self) { try await service.recognizeText(in: image) }
+        #expect(try await service.recognizeText(in: image) == "next")
+        #expect(pass.cpuOnlyCalls == [false, true, true])
+    }
+
+    @Test func failureOnBothDevicesDoesNotSwitch() async throws {
+        let pass = ScriptedPass([.failure(visionError), .failure(visionError), .success("next")])
+        let service = OCRService(pass: pass.run)
+        let image = try renderFixture(text: "x")
+
+        await #expect(throws: OCRError.self) { try await service.recognizeText(in: image) }
+        #expect(try await service.recognizeText(in: image) == "next")
+        #expect(pass.cpuOnlyCalls == [false, true, false])
+    }
+
+    @Test func noTextOnDefaultDeviceIsNotRetried() async throws {
+        let pass = ScriptedPass([.failure(OCRError.noTextFound)])
+        let service = OCRService(pass: pass.run)
+
+        await #expect(throws: OCRError.self) { try await service.recognizeText(in: try renderFixture(text: "x")) }
+        #expect(pass.cpuOnlyCalls == [false])
+    }
+}
+
+private struct VisionBoom: Error {}
+private let visionError = OCRError.visionFailed(VisionBoom())
+
+/// Replays scripted results in order and records which device each pass asked for.
+@MainActor private final class ScriptedPass {
+    private var results: [Result<String, Error>]
+    private(set) var cpuOnlyCalls: [Bool] = []
+
+    init(_ results: [Result<String, Error>]) { self.results = results }
+
+    func run(_ image: CGImage, cpuOnly: Bool) async throws -> String {
+        cpuOnlyCalls.append(cpuOnly)
+        guard !results.isEmpty else {
+            Issue.record("unexpected extra Vision pass")
+            throw OCRError.noTextFound
+        }
+        return try results.removeFirst().get()
+    }
 }
 
 private func renderFixture(text: String) throws -> CGImage {
