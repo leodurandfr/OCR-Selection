@@ -67,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         PerfLog.health.notice("launched version=\(version, privacy: .public) build=\(build, privacy: .public)")
         HealthMonitor.shared.start()
+        PermissionPresenter.noteCurrentAccess()
 
         Task { await notifications.requestAuthorization() }
 
