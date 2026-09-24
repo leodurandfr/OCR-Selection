@@ -30,7 +30,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     override init() {
         UserDefaults.standard.register(
-            defaults: [AppSettings.historyMaxCountKey: AppSettings.historyMaxCountDefault]
+            defaults: [
+                AppSettings.historyMaxCountKey: AppSettings.historyMaxCountDefault,
+                AppSettings.preserveLineBreaksKey: AppSettings.preserveLineBreaksDefault
+            ]
         )
         // A failure here used to be a `fatalError`. Losing the store is not worth taking the
         // app down with it: fall back to an in-memory container so captures keep working,

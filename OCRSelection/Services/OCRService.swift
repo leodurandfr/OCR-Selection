@@ -9,68 +9,81 @@ enum OCRError: Error {
 
 @MainActor
 struct OCRService: TextRecognizing {
+    /// Document recognition rather than plain text recognition: besides the lines, it reports
+    /// paragraphs, lists and tables, which is what lets `TextAssembler` undo the wrapping of
+    /// the captured region instead of hard-coding a newline after every visual line.
     func recognizeText(in image: CGImage) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                // Resume exactly once. Vision can both invoke the completion handler with
-                // an error AND have `perform` throw for the same failure; resuming twice
-                // crashes in debug and is undefined behaviour in release. The handler and
-                // the `perform` call run on this one serial block, so a plain flag is safe.
-                var didResume = false
-                func resume(_ result: Result<String, Error>) {
-                    guard !didResume else { return }
-                    didResume = true
-                    continuation.resume(with: result)
-                }
+        var request = RecognizeDocumentsRequest()
+        request.textRecognitionOptions.automaticallyDetectLanguage = true
+        request.textRecognitionOptions.useLanguageCorrection = true
 
-                let request = VNRecognizeTextRequest { request, error in
-                    if let error {
-                        resume(.failure(OCRError.visionFailed(error)))
-                        return
-                    }
-                    let observations = (request.results as? [VNRecognizedTextObservation]) ?? []
-                    let text = Self.assembleText(from: observations)
-                    resume(text.isEmpty ? .failure(OCRError.noTextFound) : .success(text))
-                }
-                request.recognitionLevel = .accurate
-                request.automaticallyDetectsLanguage = true
-                request.usesLanguageCorrection = true
-
-                let handler = VNImageRequestHandler(cgImage: image, options: [:])
-                do {
-                    try handler.perform([request])
-                } catch {
-                    resume(.failure(OCRError.visionFailed(error)))
-                }
-            }
+        let documents: [DocumentObservation]
+        do {
+            // Vision's `perform` is nonisolated: the recognition runs off the main actor.
+            documents = try await request.perform(on: image)
+        } catch {
+            throw OCRError.visionFailed(error)
         }
+
+        let text = await Self.assemble(
+            documents,
+            imageSize: CGSize(width: image.width, height: image.height),
+            preserveLineBreaks: UserDefaults.standard.bool(forKey: AppSettings.preserveLineBreaksKey)
+        )
+        guard !text.isEmpty else { throw OCRError.noTextFound }
+        return text
     }
 
-    /// Joins recognised observations into reading order. Vision uses normalised
-    /// coordinates with the origin at bottom-left, so a higher `midY` is higher on
-    /// screen. Observations are grouped into visual lines (top to bottom) using a
-    /// vertical band, then ordered left to right within each line — which keeps
-    /// same-line fragments and side-by-side columns from being interleaved or reversed.
-    nonisolated static func assembleText(from observations: [VNRecognizedTextObservation]) -> String {
-        let topToBottom = observations.sorted { $0.boundingBox.midY > $1.boundingBox.midY }
-        var lines: [[VNRecognizedTextObservation]] = []
-        for observation in topToBottom {
-            if let reference = lines.last?.first {
-                let band = min(observation.boundingBox.height, reference.boundingBox.height) * 0.5
-                if abs(observation.boundingBox.midY - reference.boundingBox.midY) <= band {
-                    lines[lines.count - 1].append(observation)
-                    continue
-                }
-            }
-            lines.append([observation])
+    /// nonisolated so the geometry work on a large capture stays off the main actor.
+    private nonisolated static func assemble(
+        _ documents: [DocumentObservation], imageSize: CGSize, preserveLineBreaks: Bool
+    ) async -> String {
+        documents
+            .map { TextAssembler.text(from: RecognizedLayout($0.document, imageSize: imageSize), preserveLineBreaks: preserveLineBreaks) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+    }
+}
+
+extension RecognizedLayout {
+    init(_ document: DocumentObservation.Container, imageSize: CGSize) {
+        func frame(_ region: NormalizedRegion) -> CGRect {
+            region.boundingBox.toImageCoordinates(imageSize, origin: .upperLeft)
         }
-        return lines
-            .map { line in
-                line
-                    .sorted { $0.boundingBox.minX < $1.boundingBox.minX }
-                    .compactMap { $0.topCandidates(1).first?.string }
-                    .joined(separator: " ")
+        func fragment(_ observation: RecognizedTextObservation) -> Fragment {
+            Fragment(text: observation.transcript, frame: frame(observation.boundingRegion))
+        }
+
+        paragraphs = document.paragraphs.map {
+            Paragraph(text: $0.transcript, lines: $0.lines.map(fragment), frame: frame($0.boundingRegion))
+        }
+        lists = document.lists.map { list in
+            List(
+                items: list.items.map { ListItem(marker: $0.markerString, text: $0.itemString, frame: frame($0.content.boundingRegion)) },
+                frame: frame(list.boundingRegion)
+            )
+        }
+        tables = document.tables.map { table in
+            // A merged cell is listed once per row it spans.
+            var seen = Set<[Int]>()
+            let cells = table.rows.joined().filter {
+                seen.insert([$0.rowRange.lowerBound, $0.rowRange.upperBound, $0.columnRange.lowerBound, $0.columnRange.upperBound]).inserted
             }
-            .joined(separator: "\n")
+            return Table(
+                rowCount: table.rows.count,
+                columnCount: table.columns.count,
+                cells: cells.map { cell in
+                    Cell(
+                        text: cell.content.text.transcript,
+                        rows: cell.rowRange,
+                        columns: cell.columnRange,
+                        frame: frame(cell.content.boundingRegion),
+                        words: (cell.content.text.words ?? []).map(fragment),
+                        hasWrappedText: cell.content.text.lines.contains { $0.shouldWrapToNextLine == true }
+                    )
+                },
+                frame: frame(table.boundingRegion)
+            )
+        }
     }
 }

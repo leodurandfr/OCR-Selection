@@ -8,6 +8,10 @@ enum AppSettings {
     static let historyMaxCountDefault = 30
     static let historyMaxCountRange = 10...50
     static let historyMaxCountStep = 5
+
+    /// Copy every visual line as its own line instead of rejoining wrapped text.
+    static let preserveLineBreaksKey = "preserveLineBreaks"
+    static let preserveLineBreaksDefault = false
 }
 
 extension String {

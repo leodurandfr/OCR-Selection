@@ -136,6 +136,28 @@
         }
       }
     },
+    "Copy each line exactly as it appears on screen instead of rejoining wrapped lines into paragraphs. Useful for code and poems." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy each line exactly as it appears on screen instead of rejoining wrapped lines into paragraphs. Useful for code and poems."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia cada línea tal como aparece en pantalla en lugar de unir las líneas cortadas en párrafos. Útil para código y poemas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copie chaque ligne telle qu’elle apparaît à l’écran au lieu de recoller les lignes coupées en paragraphes. Utile pour le code et les poèmes."
+          }
+        }
+      }
+    },
     "Designed by" : {
       "localizations" : {
         "en" : {
@@ -264,6 +286,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Historique"
+          }
+        }
+      }
+    },
+    "Keep original line breaks" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep original line breaks"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conservar los saltos de línea originales"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conserver les retours à la ligne d’origine"
           }
         }
       }
@@ -575,6 +619,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lancer OCR Selection automatiquement à l’ouverture de session."
+          }
+        }
+      }
+    },
+    "Text" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texte"
           }
         }
       }

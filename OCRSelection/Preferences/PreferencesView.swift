@@ -6,6 +6,7 @@ struct PreferencesView: View {
     let history: HistoryStore
 
     @AppStorage(AppSettings.historyMaxCountKey) private var maxCount: Int = AppSettings.historyMaxCountDefault
+    @AppStorage(AppSettings.preserveLineBreaksKey) private var preserveLineBreaks = AppSettings.preserveLineBreaksDefault
     @State private var launchAtLogin = false
 
     var body: some View {
@@ -27,6 +28,11 @@ struct PreferencesView: View {
                     }
                     .help(Text("Restore the default shortcut (⌘⇧2)."))
                 }
+            }
+
+            Section("Text") {
+                Toggle("Keep original line breaks", isOn: $preserveLineBreaks)
+                    .help(Text("Copy each line exactly as it appears on screen instead of rejoining wrapped lines into paragraphs. Useful for code and poems."))
             }
 
             Section("History") {
@@ -68,7 +74,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 480, height: 500)
+        .frame(width: 480, height: 580)
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
