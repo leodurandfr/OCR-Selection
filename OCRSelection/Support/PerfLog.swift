@@ -12,12 +12,19 @@ import os
 ///   persisted to disk, so the previous day can be replayed with:
 ///
 ///   ```
-///   log show --last 1d --predicate 'subsystem == "com.leodurand.ocr-selection"' --style compact
+///   log show --last 1d --predicate 'subsystem BEGINSWITH "com.leodurand.ocr-selection"' --style compact
 ///   ```
+///
+/// The Debug build logs under its own bundle ID (`com.leodurand.ocr-selection.debug`), so
+/// the two apps can be told apart when both are running; `BEGINSWITH` shows both.
 ///
 /// Nothing recognised by OCR is ever logged — only lengths and durations.
 enum PerfLog {
+    #if DEBUG
+    static let subsystem = "com.leodurand.ocr-selection.debug"
+    #else
     static let subsystem = "com.leodurand.ocr-selection"
+    #endif
     static let signposter = OSSignposter(subsystem: subsystem, category: "capture")
     /// Per-capture timings and failures.
     static let logger = Logger(subsystem: subsystem, category: "perf")

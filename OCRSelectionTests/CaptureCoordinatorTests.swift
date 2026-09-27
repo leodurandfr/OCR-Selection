@@ -56,10 +56,12 @@ struct CaptureCoordinatorTests {
         let env = Env(screenCapture: capture, ocr: .success("hello"))
         let first = Task { await env.coordinator.run() }
         while !capture.isWaiting { await Task.yield() }
+        #expect(env.coordinator.gate.isBusy)
 
         await env.coordinator.run()
         capture.finish(with: dummyImage())
         await first.value
+        #expect(!env.coordinator.gate.isBusy)
 
         #expect(capture.callCount == 1)
         #expect(env.notifications.events == [.busy, .success("hello")])
@@ -74,6 +76,66 @@ struct CaptureCoordinatorTests {
         #expect(capture.callCount == 2)
         #expect(env.pasteboard.copied == ["hello", "hello"])
         #expect(env.history.recorded == ["hello", "hello"])
+    }
+
+    @Test func visionFailureOnNearlyFullDiskBlamesTheDisk() async {
+        struct Boom: Error {}
+        let env = Env(
+            capture: .success(dummyImage()),
+            ocr: .failure(OCRError.visionFailed(Boom())),
+            diskNearlyFull: true
+        )
+        await env.coordinator.run()
+        #expect(env.notifications.events == [.diskNearlyFull(recognitionFailed: true)])
+    }
+
+    @Test func slowOCROnNearlyFullDiskWarnsAfterCopying() async {
+        let env = Env(capture: .success(dummyImage()), ocr: .success("hello"), diskNearlyFull: true, slowOCRMilliseconds: -1)
+        // The first OCR of a process compiles the model anyway: no warning for it.
+        await env.coordinator.run()
+        #expect(env.notifications.events == [.success("hello")])
+
+        await env.coordinator.run()
+        #expect(env.pasteboard.copied == ["hello", "hello"])
+        #expect(env.notifications.events == [
+            .success("hello"), .success("hello"), .diskNearlyFull(recognitionFailed: false)
+        ])
+    }
+
+    @Test func fastOCROnNearlyFullDiskDoesNotWarn() async {
+        let env = Env(capture: .success(dummyImage()), ocr: .success("hello"), diskNearlyFull: true)
+        await env.coordinator.run()
+        await env.coordinator.run()
+        #expect(env.notifications.events == [.success("hello"), .success("hello")])
+    }
+
+    @Test func slowOCRWithFreeSpaceDoesNotWarn() async {
+        let env = Env(capture: .success(dummyImage()), ocr: .success("hello"), slowOCRMilliseconds: -1)
+        await env.coordinator.run()
+        await env.coordinator.run()
+        #expect(env.notifications.events == [.success("hello"), .success("hello")])
+    }
+
+    @Test func recognizingStateCoversOCROnly() async {
+        let capture = SuspendedScreenCapture()
+        let recognizer = ProbingRecognizer()
+        let env = Env(screenCapture: capture, recognizer: recognizer)
+        recognizer.probe = { [gate = env.coordinator.gate] in gate.isRecognizing }
+        let run = Task { await env.coordinator.run() }
+        while !capture.isWaiting { await Task.yield() }
+        // Still selecting: the hourglass would claim the app is busy while the user is.
+        #expect(!env.coordinator.gate.isRecognizing)
+
+        capture.finish(with: dummyImage())
+        await run.value
+        #expect(recognizer.sawRecognizing == true)
+        #expect(!env.coordinator.gate.isRecognizing)
+    }
+
+    @Test func recognizingStateClearsWhenOCRFails() async {
+        let env = Env(capture: .success(dummyImage()), ocr: .failure(OCRError.noTextFound))
+        await env.coordinator.run()
+        #expect(!env.coordinator.gate.isRecognizing)
     }
 
     @Test func genericCaptureFailureNotifiesFailure() async {
@@ -93,18 +155,39 @@ private struct Env {
     let permission = SpyPermission()
     let coordinator: CaptureCoordinator
 
-    init(capture: Result<CGImage, Error>, ocr: Result<String, Error>) {
-        self.init(screenCapture: StubScreenCapture(capture), ocr: ocr)
+    init(
+        capture: Result<CGImage, Error>,
+        ocr: Result<String, Error>,
+        diskNearlyFull: Bool = false,
+        slowOCRMilliseconds: Double = 10_000
+    ) {
+        self.init(
+            screenCapture: StubScreenCapture(capture),
+            recognizer: StubRecognizer(ocr),
+            diskNearlyFull: diskNearlyFull,
+            slowOCRMilliseconds: slowOCRMilliseconds
+        )
     }
 
     init(screenCapture: any ScreenCapturing, ocr: Result<String, Error>) {
+        self.init(screenCapture: screenCapture, recognizer: StubRecognizer(ocr))
+    }
+
+    init(
+        screenCapture: any ScreenCapturing,
+        recognizer: any TextRecognizing,
+        diskNearlyFull: Bool = false,
+        slowOCRMilliseconds: Double = 10_000
+    ) {
         coordinator = CaptureCoordinator(
             screenCapture: screenCapture,
-            ocr: StubRecognizer(ocr),
+            ocr: recognizer,
             pasteboard: pasteboard,
             notifications: notifications,
             history: history,
-            permission: permission
+            permission: permission,
+            diskSpace: StubDiskSpace(nearlyFull: diskNearlyFull),
+            slowOCRMilliseconds: slowOCRMilliseconds
         )
     }
 }
@@ -145,17 +228,35 @@ private struct Env {
     func recognizeText(in image: CGImage) async throws -> String { try result.get() }
 }
 
+/// Records what `probe` reports while OCR is running.
+@MainActor private final class ProbingRecognizer: TextRecognizing {
+    var probe: () -> Bool = { false }
+    private(set) var sawRecognizing: Bool?
+    func recognizeText(in image: CGImage) async throws -> String {
+        sawRecognizing = probe()
+        return "text"
+    }
+}
+
+@MainActor private struct StubDiskSpace: DiskSpaceChecking {
+    let nearlyFull: Bool
+    func isNearlyFull() -> Bool { nearlyFull }
+}
+
 @MainActor private final class SpyPasteboard: Pasteboarding {
     var copied: [String] = []
     func copyText(_ text: String) { copied.append(text) }
 }
 
 @MainActor private final class SpyNotifications: Notifying {
-    enum Event: Equatable { case success(String), noText, ocrFailed, failure, busy }
+    enum Event: Equatable { case success(String), noText, ocrFailed, diskNearlyFull(recognitionFailed: Bool), failure, busy }
     var events: [Event] = []
     func notifySuccess(preview text: String) async { events.append(.success(text)) }
     func notifyNoText() async { events.append(.noText) }
     func notifyOCRFailed() async { events.append(.ocrFailed) }
+    func notifyDiskNearlyFull(recognitionFailed: Bool) async {
+        events.append(.diskNearlyFull(recognitionFailed: recognitionFailed))
+    }
     func notifyFailure() async { events.append(.failure) }
     func notifyBusy() { events.append(.busy) }
 }

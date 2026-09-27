@@ -10,8 +10,10 @@ struct OCRSelectionApp: App {
     var body: some Scene {
         // No `.modelContainer` here: the menu reads `HistoryStore`'s value snapshot, so
         // SwiftData is never touched while SwiftUI re-evaluates the menu content.
-        MenuBarExtra("OCR Selection", systemImage: "text.viewfinder") {
+        MenuBarExtra {
             MenuBarContent(coordinator: appDelegate.coordinator, history: appDelegate.history)
+        } label: {
+            MenuBarIcon(gate: appDelegate.coordinator.gate)
         }
         .menuBarExtraStyle(.menu)
 
@@ -40,7 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // and leave a persisted log line explaining why history looks empty.
         var container: ModelContainer
         do {
+            #if DEBUG
+            container = try HistoryContainer.make(migratingLegacyStore: false)
+            #else
             container = try HistoryContainer.make()
+            #endif
         } catch {
             PerfLog.health.error("persistent history unavailable, falling back to memory: \(String(describing: error), privacy: .public)")
             container = try! ModelContainer(
@@ -57,7 +63,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pasteboard: PasteboardService(),
             notifications: NotificationService(),
             history: history,
-            permission: PermissionPresenter()
+            permission: PermissionPresenter(),
+            diskSpace: DiskSpaceService()
         )
         super.init()
     }
@@ -76,6 +83,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         KeyboardShortcuts.onKeyDown(for: .captureRegion) { [coordinator] in
             Task { await coordinator.run() }
         }
+    }
+}
+
+/// Its own view so only the icon, not the menu or the scene, is re-evaluated when OCR
+/// starts or ends.
+private struct MenuBarIcon: View {
+    let gate: CaptureGate
+
+    var body: some View {
+        Label("OCR Selection", systemImage: gate.isRecognizing ? "hourglass" : "text.viewfinder")
     }
 }
 

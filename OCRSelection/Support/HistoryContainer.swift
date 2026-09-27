@@ -16,22 +16,31 @@ import SwiftData
 ///    `__NSFireTimer → SwiftData → save:`), so it is switched off.
 @MainActor
 enum HistoryContainer {
+    #if DEBUG
+    // The Debug build is its own app (bundle ID `….debug`) with its own `historyMaxCount`;
+    // sharing the store let a Debug capture prune the installed app's history to that cap.
+    static let directoryName = "OCRSelection Debug"
+    #else
     static let directoryName = "OCRSelection"
+    #endif
     static let storeName = "History.store"
     /// The pre-1.1 store location: Application Support root, default SwiftData name.
     static let legacyStoreName = "default.store"
     /// SQLite writes alongside the store; they move (and are cleaned up) with it.
     private static let sidecarSuffixes = ["-wal", "-shm"]
 
-    /// - Parameter supportDirectory: Application Support root. Injectable so migration
-    ///   can be tested against a temporary directory instead of the real one.
-    static func make(in supportDirectory: URL? = nil) throws -> ModelContainer {
+    /// - Parameters:
+    ///   - supportDirectory: Application Support root. Injectable so migration can be
+    ///     tested against a temporary directory instead of the real one.
+    ///   - migratingLegacyStore: `false` for the Debug build: the legacy store belongs to
+    ///     the installed app, and taking it deletes it from under that app.
+    static func make(in supportDirectory: URL? = nil, migratingLegacyStore: Bool = true) throws -> ModelContainer {
         let support = try supportDirectory ?? defaultSupportDirectory()
         let directory = support.appending(path: directoryName, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appending(path: storeName, directoryHint: .notDirectory)
 
-        let rescued = FileManager.default.fileExists(atPath: url.path)
+        let rescued = !migratingLegacyStore || FileManager.default.fileExists(atPath: url.path)
             ? []
             : takeLegacyEntries(from: support.appending(path: legacyStoreName, directoryHint: .notDirectory))
 

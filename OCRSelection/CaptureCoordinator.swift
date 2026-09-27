@@ -1,4 +1,6 @@
+import CoreGraphics
 import Foundation
+import Observation
 
 /// Orchestrates the capture pipeline and maps typed errors to user-facing outcomes.
 /// Backend-agnostic: it depends only on the capture/OCR/pasteboard/notification/history
@@ -12,6 +14,9 @@ struct CaptureCoordinator {
     let notifications: any Notifying
     let history: any HistoryRecording
     let permission: any PermissionPresenting
+    let diskSpace: any DiskSpaceChecking
+    /// A warm model answers in well under a second; past this it had to be recompiled.
+    var slowOCRMilliseconds: Double = 10_000
     /// A reference type so every copy of this struct (the shortcut handler and the menu
     /// each hold one) sees the same in-flight state.
     let gate = CaptureGate()
@@ -38,8 +43,9 @@ struct CaptureCoordinator {
         do {
             let image = try await screenCapture.captureRegion()
             let captureMs = PerfLog.milliseconds(clock.now - start)
+            let isFirstOCR = !gate.hasRecognized
             let ocrStart = clock.now
-            let text = try await ocr.recognizeText(in: image)
+            let text = try await recognize(image)
             let ocrMs = PerfLog.milliseconds(clock.now - ocrStart)
 
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -65,6 +71,12 @@ struct CaptureCoordinator {
             pasteboard.copyText(trimmed)
             history.record(trimmed)
             await notifications.notifySuccess(preview: trimmed)
+            // On a nearly full disk the recompile keeps coming back as macOS purges the model.
+            // Not on the process's first OCR: that one compiles the model anyway after any
+            // install or rebuild, and blaming the disk for it would be a false alarm.
+            if ocrMs > slowOCRMilliseconds, !isFirstOCR, diskSpace.isNearlyFull() {
+                await notifications.notifyDiskNearlyFull(recognitionFailed: false)
+            }
         } catch CaptureError.userCancelled {
             // Silence volontaire : l'utilisateur a appuyé sur Échap.
             PerfLog.logger.notice("capture cancelled by user")
@@ -79,11 +91,26 @@ struct CaptureCoordinator {
             // loaded, and every recognition fails until the process restarts. Retrying in
             // process, even pinned to the CPU, fails the same way — hence the relaunch hint.
             PerfLog.logger.error("OCR failed: \(String(describing: underlying), privacy: .public)")
-            await notifications.notifyOCRFailed()
+            if diskSpace.isNearlyFull() {
+                await notifications.notifyDiskNearlyFull(recognitionFailed: true)
+            } else {
+                await notifications.notifyOCRFailed()
+            }
         } catch {
             PerfLog.logger.error("capture failed: \(String(describing: error), privacy: .public)")
             await notifications.notifyFailure()
         }
+    }
+
+    /// The menu-bar hourglass covers OCR only: not the selection, where the user is the
+    /// one working, nor the permission alert, where the app is waiting on them.
+    private func recognize(_ image: CGImage) async throws -> String {
+        gate.isRecognizing = true
+        defer {
+            gate.isRecognizing = false
+            gate.hasRecognized = true
+        }
+        return try await ocr.recognizeText(in: image)
     }
 
     func recopy(_ text: String) async {
@@ -95,6 +122,12 @@ struct CaptureCoordinator {
 
 /// Tracks whether a capture is in progress; see `CaptureCoordinator.run()`.
 @MainActor
+@Observable
 final class CaptureGate {
-    var isBusy = false
+    @ObservationIgnored var isBusy = false
+    /// Drives the menu-bar icon: a cold Vision model keeps OCR busy for 30–40 s, which
+    /// otherwise looked like the app had stopped responding.
+    var isRecognizing = false
+    /// Whether this process has run OCR before (see the slow-OCR disk warning).
+    @ObservationIgnored var hasRecognized = false
 }

@@ -24,9 +24,15 @@ import CoreGraphics
     func notifySuccess(preview text: String) async
     func notifyNoText() async
     func notifyOCRFailed() async
+    /// OCR failed or was very slow while the disk was nearly full (see `DiskSpaceService`).
+    func notifyDiskNearlyFull(recognitionFailed: Bool) async
     func notifyFailure() async
     /// A capture request arrived while one was still running and was dropped.
     func notifyBusy()
+}
+
+@MainActor protocol DiskSpaceChecking {
+    func isNearlyFull() -> Bool
 }
 
 @MainActor protocol HistoryRecording {
