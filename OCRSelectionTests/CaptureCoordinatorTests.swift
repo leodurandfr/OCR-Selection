@@ -123,7 +123,7 @@ struct CaptureCoordinatorTests {
         recognizer.probe = { [gate = env.coordinator.gate] in gate.isRecognizing }
         let run = Task { await env.coordinator.run() }
         while !capture.isWaiting { await Task.yield() }
-        // Still selecting: the hourglass would claim the app is busy while the user is.
+        // Still selecting: a pulsing icon would claim the app is busy while the user is.
         #expect(!env.coordinator.gate.isRecognizing)
 
         capture.finish(with: dummyImage())

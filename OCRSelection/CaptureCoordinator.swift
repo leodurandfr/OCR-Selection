@@ -102,7 +102,7 @@ struct CaptureCoordinator {
         }
     }
 
-    /// The menu-bar hourglass covers OCR only: not the selection, where the user is the
+    /// The menu-bar pulse covers OCR only: not the selection, where the user is the
     /// one working, nor the permission alert, where the app is waiting on them.
     private func recognize(_ image: CGImage) async throws -> String {
         gate.isRecognizing = true

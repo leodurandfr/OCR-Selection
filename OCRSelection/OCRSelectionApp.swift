@@ -92,7 +92,52 @@ private struct MenuBarIcon: View {
     let gate: CaptureGate
 
     var body: some View {
-        Label("OCR Selection", systemImage: gate.isRecognizing ? "hourglass" : "text.viewfinder")
+        if gate.isRecognizing {
+            PulsingMenuBarIcon()
+        } else {
+            Label("OCR Selection", systemImage: "text.viewfinder")
+        }
+    }
+}
+
+/// The menu-bar icon fading down and back up while OCR runs.
+///
+/// `MenuBarExtra` turns its label into a static status-item image, so `symbolEffect` and
+/// SwiftUI animations never play there. The pulse is stepped by hand instead: the icon is
+/// redrawn from pre-rendered frames at decreasing then increasing opacity. They stay
+/// template images, so the menu bar still tints them for light, dark and tinted modes.
+private struct PulsingMenuBarIcon: View {
+    private static let symbolName = "text.viewfinder"
+    private static let frameInterval: Duration = .milliseconds(80)
+    /// One 1.44 s cycle: full → 35 % → full.
+    private static let frames: [NSImage] = {
+        let count = 18
+        let base = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) ?? NSImage()
+        return (0..<count).map { index in
+            let opacity = 0.35 + 0.65 * (0.5 + 0.5 * cos(2 * .pi * Double(index) / Double(count)))
+            let frame = NSImage(size: base.size, flipped: false) { rect in
+                base.draw(in: rect, from: .zero, operation: .sourceOver, fraction: opacity)
+                return true
+            }
+            frame.isTemplate = true
+            return frame
+        }
+    }()
+
+    @State private var frameIndex = 0
+
+    var body: some View {
+        Label {
+            Text("OCR Selection")
+        } icon: {
+            Image(nsImage: Self.frames[frameIndex])
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.frameInterval)
+                frameIndex = (frameIndex + 1) % Self.frames.count
+            }
+        }
     }
 }
 
