@@ -92,8 +92,8 @@ private struct MenuBarIcon: View {
     let gate: CaptureGate
 
     var body: some View {
-        if gate.isRecognizing {
-            PulsingMenuBarIcon()
+        if gate.isRecognizing, let frames = PulsingMenuBarIcon.frames {
+            PulsingMenuBarIcon(frames: frames)
         } else {
             Label("OCR Selection", systemImage: "text.viewfinder")
         }
@@ -104,15 +104,19 @@ private struct MenuBarIcon: View {
 ///
 /// `MenuBarExtra` turns its label into a static status-item image, so `symbolEffect` and
 /// SwiftUI animations never play there. The pulse is stepped by hand instead: the icon is
-/// redrawn from pre-rendered frames at decreasing then increasing opacity. They stay
-/// template images, so the menu bar still tints them for light, dark and tinted modes.
+/// swapped through a fixed set of frames drawn at decreasing then increasing opacity. They
+/// stay template images, so the menu bar still tints them for light, dark and tinted modes.
+/// Costs about 6 % of one core while it runs, which is only during OCR.
 private struct PulsingMenuBarIcon: View {
-    private static let symbolName = "text.viewfinder"
     private static let frameInterval: Duration = .milliseconds(80)
-    /// One 1.44 s cycle: full → 35 % → full.
-    private static let frames: [NSImage] = {
+    /// One 1.44 s cycle: full → 35 % → full. `nil` if the symbol is missing, in which case
+    /// the static icon stays up rather than an empty, zero-width status item.
+    static let frames: [NSImage]? = {
         let count = 18
-        let base = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) ?? NSImage()
+        guard let base = NSImage(systemSymbolName: "text.viewfinder", accessibilityDescription: nil) else {
+            PerfLog.health.error("menu-bar pulse disabled: symbol text.viewfinder not found")
+            return nil
+        }
         return (0..<count).map { index in
             let opacity = 0.35 + 0.65 * (0.5 + 0.5 * cos(2 * .pi * Double(index) / Double(count)))
             let frame = NSImage(size: base.size, flipped: false) { rect in
@@ -124,18 +128,25 @@ private struct PulsingMenuBarIcon: View {
         }
     }()
 
+    let frames: [NSImage]
     @State private var frameIndex = 0
 
     var body: some View {
         Label {
             Text("OCR Selection")
         } icon: {
-            Image(nsImage: Self.frames[frameIndex])
+            Image(nsImage: frames[frameIndex])
         }
         .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: Self.frameInterval)
-                frameIndex = (frameIndex + 1) % Self.frames.count
+            // Reduce Motion: hold the dimmest frame, a still "busy" icon, instead of pulsing.
+            guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+                frameIndex = frames.count / 2
+                return
+            }
+            while true {
+                // Stop on cancellation instead of stepping once more on a view being removed.
+                do { try await Task.sleep(for: Self.frameInterval) } catch { return }
+                frameIndex = (frameIndex + 1) % frames.count
             }
         }
     }
