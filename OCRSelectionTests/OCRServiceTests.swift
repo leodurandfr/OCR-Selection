@@ -25,6 +25,52 @@ struct OCRServiceTests {
         #expect(result.contains("lazy dog"))
         #expect(result.contains("kitchen window"))
     }
+
+    @Test func readsABorderlessTableRowByRow() async throws {
+        defer { UserDefaults.standard.removeObject(forKey: AppSettings.preserveLineBreaksKey) }
+        UserDefaults.standard.set(false, forKey: AppSettings.preserveLineBreaksKey)
+        let rows = [["Region", "Q1", "Q2"], ["North America", "1,204", "1,388"], ["Europe", "987", "1,020"]]
+        let image = try renderGrid(rows, columnX: [20, 400, 600])
+        let result = try await OCRService().recognizeText(in: image)
+        // The layout is under test, not the reading of each value: three rows of three cells.
+        let cells = result.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { $0.split(separator: "\t", omittingEmptySubsequences: false) }
+        #expect(cells.map(\.count) == [3, 3, 3])
+        #expect(cells.first?.first == "Region")
+        #expect(cells.map { $0.first ?? "" } == ["Region", "North America", "Europe"])
+    }
+}
+
+/// Draws each row's values at the given column positions, 50 px apart, without borders.
+private func renderGrid(_ rows: [[String]], columnX: [CGFloat]) throws -> CGImage {
+    let size = CGSize(width: 900, height: 60 + 50 * CGFloat(rows.count))
+    guard let context = CGContext(
+        data: nil,
+        width: Int(size.width),
+        height: Int(size.height),
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else {
+        throw FixtureError.contextCreationFailed
+    }
+    context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    context.fill(CGRect(origin: .zero, size: size))
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.systemFont(ofSize: 26),
+        .foregroundColor: NSColor.black
+    ]
+    for (rowIndex, values) in rows.enumerated() {
+        for (value, x) in zip(values, columnX) {
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: value, attributes: attributes))
+            // Core Graphics counts y upwards: the first row is drawn at the top.
+            context.textPosition = CGPoint(x: x, y: size.height - 46 - 50 * CGFloat(rowIndex))
+            CTLineDraw(line, context)
+        }
+    }
+    guard let image = context.makeImage() else { throw FixtureError.renderFailed }
+    return image
 }
 
 /// Lays `text` out in a column narrow enough to wrap it over several lines.
