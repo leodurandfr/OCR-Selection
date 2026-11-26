@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1400000000000000000000C1 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 1300000000000000000000C1 /* KeyboardShortcuts */; };
+		1400000000000000000000C2 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 1300000000000000000000C2 /* Sparkle */; };
 		BA0000000000000000000001 /* OCRSelectionRecognizer.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = B00000000000000000000001 /* OCRSelectionRecognizer.xpc */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -49,6 +50,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		0B0000000000000000000002 /* Exceptions for "OCRSelection" folder in "OCRSelection" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0E0000000000000000000001 /* OCRSelection */;
+		};
 		B10000000000000000000003 /* Exceptions for "OCRSelectionRecognizer" folder in "OCRSelectionRecognizer" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -59,7 +67,7 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		0B0000000000000000000001 /* OCRSelection */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = OCRSelection; sourceTree = "<group>"; };
+		0B0000000000000000000001 /* OCRSelection */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (0B0000000000000000000002 /* Exceptions for "OCRSelection" folder in "OCRSelection" target */, ); explicitFileTypes = {}; explicitFolders = (); path = OCRSelection; sourceTree = "<group>"; };
 		A10000000000000000000001 /* OCRSelectionTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = OCRSelectionTests; sourceTree = "<group>"; };
 		B10000000000000000000001 /* OCRSelectionRecognizer */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (B10000000000000000000003 /* Exceptions for "OCRSelectionRecognizer" folder in "OCRSelectionRecognizer" target */, ); explicitFileTypes = {}; explicitFolders = (); path = OCRSelectionRecognizer; sourceTree = "<group>"; };
 		B10000000000000000000002 /* Shared */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Shared; sourceTree = "<group>"; };
@@ -71,6 +79,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1400000000000000000000C1 /* KeyboardShortcuts in Frameworks */,
+				1400000000000000000000C2 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -136,6 +145,7 @@
 			name = OCRSelection;
 			packageProductDependencies = (
 				1300000000000000000000C1 /* KeyboardShortcuts */,
+				1300000000000000000000C2 /* Sparkle */,
 			);
 			productName = OCRSelection;
 			productReference = 0A0000000000000000000001 /* OCRSelection.app */;
@@ -219,6 +229,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				1200000000000000000000C1 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				1200000000000000000000C2 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			productRefGroup = 0D0000000000000000000002 /* Products */;
 			projectDirPath = "";
@@ -430,6 +441,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "OCR Selection Debug";
+				INFOPLIST_FILE = OCRSelection/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Leo Durand";
@@ -458,6 +470,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OCRSelection/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Leo Durand";
@@ -602,6 +615,14 @@
 				minimumVersion = 2.4.0;
 			};
 		};
+		1200000000000000000000C2 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -609,6 +630,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1200000000000000000000C1 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
 			productName = KeyboardShortcuts;
+		};
+		1300000000000000000000C2 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1200000000000000000000C2 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -4,6 +4,7 @@ import SwiftUI
 
 struct PreferencesView: View {
     let history: HistoryStore
+    @Bindable var updates: UpdateService
 
     @AppStorage(AppSettings.historyMaxCountKey) private var maxCount: Int = AppSettings.historyMaxCountDefault
     @AppStorage(AppSettings.preserveLineBreaksKey) private var preserveLineBreaks = AppSettings.preserveLineBreaksDefault
@@ -14,6 +15,25 @@ struct PreferencesView: View {
             Section("General") {
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .help(Text("Start OCR Selection automatically when you log in."))
+            }
+
+            if UpdateService.isEnabled {
+                Section("Updates") {
+                    Toggle("Check for updates automatically", isOn: $updates.automaticallyChecksForUpdates)
+                        .help(Text("Look for a new version of OCR Selection once a day."))
+                    Toggle("Download and install updates automatically", isOn: $updates.automaticallyDownloadsUpdates)
+                        .disabled(!updates.automaticallyChecksForUpdates)
+                        .help(Text("Install new versions in the background; they take effect the next time OCR Selection starts."))
+                    HStack {
+                        Text("Version \(Self.versionString)")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Check Now") {
+                            updates.checkForUpdates()
+                        }
+                        .disabled(!updates.canCheckForUpdates)
+                    }
+                }
             }
 
             Section("Shortcut") {
@@ -74,13 +94,17 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 480, height: 580)
+        .frame(width: 480, height: UpdateService.isEnabled ? 700 : 580)
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
         .onChange(of: launchAtLogin) { _, newValue in
             updateLoginItem(enabled: newValue)
         }
+    }
+
+    private static var versionString: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
     }
 
     private var sliderBinding: Binding<Double> {

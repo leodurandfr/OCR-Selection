@@ -11,14 +11,14 @@ struct OCRSelectionApp: App {
         // No `.modelContainer` here: the menu reads `HistoryStore`'s value snapshot, so
         // SwiftData is never touched while SwiftUI re-evaluates the menu content.
         MenuBarExtra {
-            MenuBarContent(coordinator: appDelegate.coordinator, history: appDelegate.history)
+            MenuBarContent(coordinator: appDelegate.coordinator, history: appDelegate.history, updates: appDelegate.updates)
         } label: {
             MenuBarIcon(gate: appDelegate.coordinator.gate)
         }
         .menuBarExtraStyle(.menu)
 
         Settings {
-            PreferencesView(history: appDelegate.history)
+            PreferencesView(history: appDelegate.history, updates: appDelegate.updates)
         }
     }
 }
@@ -28,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let container: ModelContainer
     let history: HistoryStore
     let coordinator: CaptureCoordinator
+    /// Created at launch so Sparkle's scheduled checks run even if the menu is never opened.
+    let updates = UpdateService()
     private let notifications = NotificationService()
     /// Prewarms Vision in the recognizer service and rebuilds its model after a purge.
     private let visionCache = VisionCacheMonitor(
@@ -163,6 +165,7 @@ private struct PulsingMenuBarIcon: View {
 private struct MenuBarContent: View {
     let coordinator: CaptureCoordinator
     let history: HistoryStore
+    let updates: UpdateService
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
@@ -195,6 +198,13 @@ private struct MenuBarContent: View {
             Task { await SettingsWindowPresenter.show(using: openSettings) }
         }
         .keyboardShortcut(",", modifiers: .command)
+
+        if UpdateService.isEnabled {
+            Button("Check for Updates…") {
+                updates.checkForUpdates()
+            }
+            .disabled(!updates.canCheckForUpdates)
+        }
 
         Button("About OCR Selection") {
             NSApplication.shared.activate(ignoringOtherApps: true)
