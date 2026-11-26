@@ -102,6 +102,27 @@ struct CaptureCoordinatorTests {
         ])
     }
 
+    @Test func slowOCRThatCompiledANewModelDoesNotWarn() async {
+        let cache = StubModelCache(known: 3, current: 3)
+        let env = Env(capture: .success(dummyImage()), ocr: .success("hello"), diskNearlyFull: true, slowOCRMilliseconds: -1, modelCache: cache)
+        await env.coordinator.run()
+        // Text in a new language: Vision compiled a fourth model.
+        cache.current = 4
+        await env.coordinator.run()
+        #expect(env.notifications.events == [.success("hello"), .success("hello")])
+    }
+
+    @Test func slowOCRThatRecompiledPurgedModelsWarns() async {
+        // Purged, then rebuilt during the OCR: back to what was known, not past it.
+        let cache = StubModelCache(known: 3, current: 3)
+        let env = Env(capture: .success(dummyImage()), ocr: .success("hello"), diskNearlyFull: true, slowOCRMilliseconds: -1, modelCache: cache)
+        await env.coordinator.run()
+        await env.coordinator.run()
+        #expect(env.notifications.events == [
+            .success("hello"), .success("hello"), .diskNearlyFull(recognitionFailed: false)
+        ])
+    }
+
     @Test func fastOCROnNearlyFullDiskDoesNotWarn() async {
         let env = Env(capture: .success(dummyImage()), ocr: .success("hello"), diskNearlyFull: true)
         await env.coordinator.run()
@@ -159,13 +180,15 @@ private struct Env {
         capture: Result<CGImage, Error>,
         ocr: Result<String, Error>,
         diskNearlyFull: Bool = false,
-        slowOCRMilliseconds: Double = 10_000
+        slowOCRMilliseconds: Double = 10_000,
+        modelCache: (any VisionModelCaching)? = nil
     ) {
         self.init(
             screenCapture: StubScreenCapture(capture),
             recognizer: StubRecognizer(ocr),
             diskNearlyFull: diskNearlyFull,
-            slowOCRMilliseconds: slowOCRMilliseconds
+            slowOCRMilliseconds: slowOCRMilliseconds,
+            modelCache: modelCache
         )
     }
 
@@ -177,7 +200,8 @@ private struct Env {
         screenCapture: any ScreenCapturing,
         recognizer: any TextRecognizing,
         diskNearlyFull: Bool = false,
-        slowOCRMilliseconds: Double = 10_000
+        slowOCRMilliseconds: Double = 10_000,
+        modelCache: (any VisionModelCaching)? = nil
     ) {
         coordinator = CaptureCoordinator(
             screenCapture: screenCapture,
@@ -187,9 +211,20 @@ private struct Env {
             history: history,
             permission: permission,
             diskSpace: StubDiskSpace(nearlyFull: diskNearlyFull),
-            slowOCRMilliseconds: slowOCRMilliseconds
+            slowOCRMilliseconds: slowOCRMilliseconds,
+            modelCache: modelCache
         )
     }
+}
+
+@MainActor private final class StubModelCache: VisionModelCaching {
+    var knownModelCount: Int
+    var current: Int
+    init(known: Int, current: Int) {
+        knownModelCount = known
+        self.current = current
+    }
+    func currentModelCount() -> Int { current }
 }
 
 @MainActor private final class StubScreenCapture: ScreenCapturing {

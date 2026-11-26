@@ -69,7 +69,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             notifications: NotificationService(),
             history: history,
             permission: PermissionPresenter(),
-            diskSpace: DiskSpaceService()
+            diskSpace: DiskSpaceService(),
+            modelCache: visionCache
         )
         super.init()
     }

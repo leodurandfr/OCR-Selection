@@ -35,6 +35,14 @@ import CoreGraphics
     func isNearlyFull() -> Bool
 }
 
+/// What the recognizer's Vision cache holds (see `VisionCacheMonitor`), so a slow OCR that
+/// compiled a model Vision had never needed (another language) is not blamed on the disk.
+@MainActor protocol VisionModelCaching {
+    /// The most finished models seen since the last purge.
+    var knownModelCount: Int { get }
+    func currentModelCount() -> Int
+}
+
 @MainActor protocol HistoryRecording {
     func record(_ text: String)
 }

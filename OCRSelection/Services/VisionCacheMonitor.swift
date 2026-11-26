@@ -18,7 +18,7 @@ import Foundation
 /// while a rebuild runs, since the rebuild itself writes the cache. None of this drives
 /// the menu-bar pulse, which stays for user-initiated OCR only.
 @MainActor
-final class VisionCacheMonitor {
+final class VisionCacheMonitor: VisionModelCaching {
     let cacheRoot: URL
     private let transport: any RecognitionTransport
     private let coalescingDelay: Duration
@@ -107,6 +107,10 @@ final class VisionCacheMonitor {
             knownBundleCount = count
         }
     }
+
+    var knownModelCount: Int { knownBundleCount }
+
+    func currentModelCount() -> Int { countModelBundles() }
 
     /// Finished model bundles, at `<OS build>/<hash>/<hash>.bundle`. In-progress compiles
     /// (`<hash>.tmp.<pid>_<n>.bundle`) don't count.

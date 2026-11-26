@@ -17,6 +17,8 @@ struct CaptureCoordinator {
     let diskSpace: any DiskSpaceChecking
     /// A warm model answers in well under a second; past this it had to be recompiled.
     var slowOCRMilliseconds: Double = 10_000
+    /// Tells a first compile of a new model (no disk warning) from a recompile after a purge.
+    var modelCache: (any VisionModelCaching)? = nil
     /// A reference type so every copy of this struct (the shortcut handler and the menu
     /// each hold one) sees the same in-flight state.
     let gate = CaptureGate()
@@ -44,6 +46,7 @@ struct CaptureCoordinator {
             let image = try await screenCapture.captureRegion()
             let captureMs = PerfLog.milliseconds(clock.now - start)
             let isFirstOCR = !gate.hasRecognized
+            let knownModels = modelCache?.knownModelCount
             let ocrStart = clock.now
             let text = try await recognize(image)
             let ocrMs = PerfLog.milliseconds(clock.now - ocrStart)
@@ -74,7 +77,10 @@ struct CaptureCoordinator {
             // On a nearly full disk the recompile keeps coming back as macOS purges the model.
             // Not on the process's first OCR: that one compiles the model anyway after any
             // install or rebuild, and blaming the disk for it would be a false alarm.
-            if ocrMs > slowOCRMilliseconds, !isFirstOCR, diskSpace.isNearlyFull() {
+            // Nor when the slow OCR compiled a model Vision had never needed before (text in
+            // another language): the cache grew past anything seen, so nothing was purged.
+            let compiledNewModel = knownModels.map { (modelCache?.currentModelCount() ?? 0) > $0 } ?? false
+            if ocrMs > slowOCRMilliseconds, !isFirstOCR, !compiledNewModel, diskSpace.isNearlyFull() {
                 await notifications.notifyDiskNearlyFull(recognitionFailed: false)
             }
         } catch CaptureError.userCancelled {
