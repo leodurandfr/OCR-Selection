@@ -689,24 +689,24 @@
         }
       }
     },
-    "Text recognition failed because macOS deleted the app's files to free up space. Free up disk space, then quit and relaunch OCR Selection." : {
+    "Text recognition failed because macOS deleted the app's files to free up space. Try again in a minute, and free up disk space to prevent this." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Text recognition failed because macOS deleted the app's files to free up space. Free up disk space, then quit and relaunch OCR Selection."
+            "value" : "Text recognition failed because macOS deleted the app's files to free up space. Try again in a minute, and free up disk space to prevent this."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El reconocimiento de texto falló porque macOS eliminó archivos de la app para liberar espacio. Libera espacio en disco y luego cierra y vuelve a abrir OCR Selection."
+            "value" : "El reconocimiento de texto falló porque macOS eliminó archivos de la app para liberar espacio. Vuelve a intentarlo en un minuto y libera espacio en disco para evitarlo."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La reconnaissance du texte a échoué car macOS a supprimé des fichiers de l'app pour libérer de l'espace. Libérez de l'espace disque, puis quittez et relancez OCR Selection."
+            "value" : "La reconnaissance du texte a échoué car macOS a supprimé des fichiers de l'app pour libérer de l'espace. Réessayez dans une minute, et libérez de l'espace disque pour éviter cela."
           }
         }
       }
@@ -733,24 +733,24 @@
         }
       }
     },
-    "The capture succeeded but text recognition failed. Quit and relaunch OCR Selection." : {
+    "The capture succeeded but text recognition failed. Try again in a moment." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The capture succeeded but text recognition failed. Quit and relaunch OCR Selection."
+            "value" : "The capture succeeded but text recognition failed. Try again in a moment."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La captura se realizó correctamente pero falló el reconocimiento de texto. Cierra y vuelve a abrir OCR Selection."
+            "value" : "La captura se realizó, pero el reconocimiento de texto falló. Vuelve a intentarlo en un momento."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La capture a réussi mais la reconnaissance du texte a échoué. Quittez puis relancez OCR Selection."
+            "value" : "La capture a réussi mais la reconnaissance du texte a échoué. Réessayez dans un instant."
           }
         }
       }

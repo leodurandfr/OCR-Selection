@@ -20,13 +20,13 @@ struct NotificationService: Notifying {
     func notifyOCRFailed() async {
         await deliver(
             title: String(localized: "Unable to read text"),
-            body: String(localized: "The capture succeeded but text recognition failed. Quit and relaunch OCR Selection.")
+            body: String(localized: "The capture succeeded but text recognition failed. Try again in a moment.")
         )
     }
 
     func notifyDiskNearlyFull(recognitionFailed: Bool) async {
         let body = recognitionFailed
-            ? String(localized: "Text recognition failed because macOS deleted the app's files to free up space. Free up disk space, then quit and relaunch OCR Selection.")
+            ? String(localized: "Text recognition failed because macOS deleted the app's files to free up space. Try again in a minute, and free up disk space to prevent this.")
             : String(localized: "Text recognition was slow because the disk is almost full. Free up disk space to speed it up.")
         await deliver(title: String(localized: "Disk almost full"), body: body)
     }

@@ -29,6 +29,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let history: HistoryStore
     let coordinator: CaptureCoordinator
     private let notifications = NotificationService()
+    /// Prewarms Vision in the recognizer service and rebuilds its model after a purge.
+    private let visionCache = VisionCacheMonitor(
+        cacheRoot: VisionCacheMonitor.defaultCacheRoot(serviceName: RecognizerConnection.shared.serviceName),
+        transport: RecognizerConnection.shared
+    )
 
     override init() {
         UserDefaults.standard.register(
@@ -77,6 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         PermissionPresenter.noteCurrentAccess()
 
         Task { await notifications.requestAuthorization() }
+        visionCache.start()
 
         // Fire on key-DOWN so the capture starts the instant the chord is recognised,
         // rather than waiting for the user to release the keys.

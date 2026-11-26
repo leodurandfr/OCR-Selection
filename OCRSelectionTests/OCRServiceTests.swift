@@ -14,6 +14,23 @@ struct OCRServiceTests {
         #expect(result.contains("World"))
     }
 
+    /// The real XPC path: a restart must hand the next request to a new process, since a
+    /// reconnect alone would land in the old one and keep a broken Vision.
+    @Test func restartGivesTheNextRequestAFreshServiceProcess() async throws {
+        let connection = RecognizerConnection.shared
+        let payload = try #require(ImagePayload(try renderFixture(text: "Fresh")))
+        _ = try await connection.recognize(payload, timeout: .seconds(120))
+        let before = try #require(connection.servicePid)
+        #expect(before > 0)
+        await connection.restart(reason: "test")
+        #expect(kill(before, 0) != 0)
+        let layout = try await connection.recognize(payload, timeout: .seconds(120))
+        #expect(layout.fragments.map(\.text).joined().contains("Fresh"))
+        let after = try #require(connection.servicePid)
+        #expect(after > 0)
+        #expect(after != before)
+    }
+
     @Test func rejoinsTextWrappedByItsColumn() async throws {
         defer { UserDefaults.standard.removeObject(forKey: AppSettings.preserveLineBreaksKey) }
         UserDefaults.standard.set(false, forKey: AppSettings.preserveLineBreaksKey)

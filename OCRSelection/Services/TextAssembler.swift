@@ -1,21 +1,6 @@
 import CoreGraphics
 import Foundation
 
-/// What Vision's text recognition found: one fragment per run of text on a visual line.
-/// Vision splits a line where a wide gap separates two runs, so a table row comes as one
-/// fragment per cell and side-by-side text columns as one fragment per column. Kept free of
-/// Vision types so tests can build layouts by hand. Frames are in image pixels with the
-/// origin at the top-left (y grows downwards), so the geometry reads like the screen.
-struct RecognizedLayout: Equatable {
-    struct Fragment: Equatable {
-        var text: String
-        var frame: CGRect
-    }
-
-    /// In any order: reading order is rebuilt from the frames.
-    var fragments: [Fragment]
-}
-
 /// Turns recognised text fragments into clipboard text. The point is to undo the line
 /// wrapping of the captured region: a paragraph comes out as one line, a list as one item
 /// per line (nesting as tabs), a table as tab-separated rows (which paste as real tables

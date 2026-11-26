@@ -48,6 +48,10 @@ struct ScreenCaptureService: ScreenCapturing {
         return image
     }
 
+    /// `screencapture -i` waits for the user indefinitely. Past this the process is killed
+    /// so a forgotten selection (or a wedged process) can't hold the capture gate forever.
+    nonisolated static let selectionTimeout: TimeInterval = 300
+
     // nonisolated so the blocking stderr read runs off the main actor.
     private nonisolated func runScreenCapture(writingTo url: URL) async throws -> String {
         let process = Process()
@@ -62,6 +66,15 @@ struct ScreenCaptureService: ScreenCapturing {
                 try process.run()
             } catch {
                 continuation.resume(throwing: error)
+                return
+            }
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + Self.selectionTimeout) {
+                guard process.isRunning else { return }
+                PerfLog.logger.error("screencapture still running after \(Int(Self.selectionTimeout), privacy: .public)s, terminating it")
+                process.terminate()
+                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 5) {
+                    if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+                }
             }
         }
 

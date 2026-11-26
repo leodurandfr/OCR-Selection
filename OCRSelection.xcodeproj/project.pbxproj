@@ -8,7 +8,22 @@
 
 /* Begin PBXBuildFile section */
 		1400000000000000000000C1 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 1300000000000000000000C1 /* KeyboardShortcuts */; };
+		BA0000000000000000000001 /* OCRSelectionRecognizer.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = B00000000000000000000001 /* OCRSelectionRecognizer.xpc */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB0000000000000000000001 /* Embed XPC Services */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/XPCServices";
+			dstSubfolderSpec = 16;
+			files = (
+				BA0000000000000000000001 /* OCRSelectionRecognizer.xpc in Embed XPC Services */,
+			);
+			name = "Embed XPC Services";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXContainerItemProxy section */
 		A70000000000000000000001 /* PBXContainerItemProxy */ = {
@@ -18,16 +33,36 @@
 			remoteGlobalIDString = 0E0000000000000000000001;
 			remoteInfo = OCRSelection;
 		};
+		B70000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0F0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B50000000000000000000001;
+			remoteInfo = OCRSelectionRecognizer;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		0A0000000000000000000001 /* OCRSelection.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OCRSelection.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000001 /* OCRSelectionTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OCRSelectionTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B00000000000000000000001 /* OCRSelectionRecognizer.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = OCRSelectionRecognizer.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B10000000000000000000003 /* Exceptions for "OCRSelectionRecognizer" folder in "OCRSelectionRecognizer" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B50000000000000000000001 /* OCRSelectionRecognizer */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0B0000000000000000000001 /* OCRSelection */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = OCRSelection; sourceTree = "<group>"; };
 		A10000000000000000000001 /* OCRSelectionTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = OCRSelectionTests; sourceTree = "<group>"; };
+		B10000000000000000000001 /* OCRSelectionRecognizer */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (B10000000000000000000003 /* Exceptions for "OCRSelectionRecognizer" folder in "OCRSelectionRecognizer" target */, ); explicitFileTypes = {}; explicitFolders = (); path = OCRSelectionRecognizer; sourceTree = "<group>"; };
+		B10000000000000000000002 /* Shared */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Shared; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,6 +81,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B20000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -53,6 +95,8 @@
 			isa = PBXGroup;
 			children = (
 				0B0000000000000000000001 /* OCRSelection */,
+				B10000000000000000000001 /* OCRSelectionRecognizer */,
+				B10000000000000000000002 /* Shared */,
 				A10000000000000000000001 /* OCRSelectionTests */,
 				0D0000000000000000000002 /* Products */,
 			);
@@ -63,6 +107,7 @@
 			children = (
 				0A0000000000000000000001 /* OCRSelection.app */,
 				A00000000000000000000001 /* OCRSelectionTests.xctest */,
+				B00000000000000000000001 /* OCRSelectionRecognizer.xpc */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -77,13 +122,16 @@
 				0E0000000000000000000002 /* Sources */,
 				0C0000000000000000000001 /* Frameworks */,
 				0E0000000000000000000003 /* Resources */,
+				BB0000000000000000000001 /* Embed XPC Services */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B60000000000000000000001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				0B0000000000000000000001 /* OCRSelection */,
+				B10000000000000000000002 /* Shared */,
 			);
 			name = OCRSelection;
 			packageProductDependencies = (
@@ -116,6 +164,29 @@
 			productReference = A00000000000000000000001 /* OCRSelectionTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		B50000000000000000000001 /* OCRSelectionRecognizer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B90000000000000000000001 /* Build configuration list for PBXNativeTarget "OCRSelectionRecognizer" */;
+			buildPhases = (
+				B30000000000000000000001 /* Sources */,
+				B20000000000000000000001 /* Frameworks */,
+				B40000000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B10000000000000000000001 /* OCRSelectionRecognizer */,
+				B10000000000000000000002 /* Shared */,
+			);
+			name = OCRSelectionRecognizer;
+			packageProductDependencies = (
+			);
+			productName = OCRSelectionRecognizer;
+			productReference = B00000000000000000000001 /* OCRSelectionRecognizer.xpc */;
+			productType = "com.apple.product-type.xpc-service";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -128,6 +199,9 @@
 				TargetAttributes = {
 					0E0000000000000000000001 = {
 						CreatedOnToolsVersion = 26.3;
+					};
+					B50000000000000000000001 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -152,6 +226,7 @@
 			targets = (
 				0E0000000000000000000001 /* OCRSelection */,
 				A50000000000000000000001 /* OCRSelectionTests */,
+				B50000000000000000000001 /* OCRSelectionRecognizer */,
 			);
 		};
 /* End PBXProject section */
@@ -165,6 +240,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A40000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B40000000000000000000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -188,6 +270,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B30000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -195,6 +284,11 @@
 			isa = PBXTargetDependency;
 			target = 0E0000000000000000000001 /* OCRSelection */;
 			targetProxy = A70000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		B60000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B50000000000000000000001 /* OCRSelectionRecognizer */;
+			targetProxy = B70000000000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -420,6 +514,44 @@
 			};
 			name = Release;
 		};
+		B80000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OCRSelectionRecognizer/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Leo Durand";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.leodurand.ocr-selection.debug.recognizer";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B80000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OCRSelectionRecognizer/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Leo Durand";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.leodurand.ocr-selection.recognizer";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -446,6 +578,15 @@
 			buildConfigurations = (
 				A80000000000000000000001 /* Debug */,
 				A80000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B90000000000000000000001 /* Build configuration list for PBXNativeTarget "OCRSelectionRecognizer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B80000000000000000000001 /* Debug */,
+				B80000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
