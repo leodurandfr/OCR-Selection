@@ -8,10 +8,9 @@ import Foundation
 /// `~/Library/Application Support/<OCRSelection | OCRSelection Debug>/VisionCache`.
 ///
 /// Verified: Vision follows the symlink (the compiled `.bundle`s land in the target, OCR
-/// works, the next launch is warm). **Not verified: whether `deleted`'s purge follows the
-/// symlink too** — it can't be triggered on demand without filling the disk. If it does,
-/// nothing is lost compared with no relocation: `VisionCacheMonitor` still sees the models
-/// disappear and rebuilds them.
+/// works, the next launch is warm). **Also verified, on 2026-11-26 at 7.7 GB free: it does
+/// not protect the models.** The purge deleted the files in the target as well — e5rt marks
+/// them purgeable, and APFS purges such files wherever they live. Candidate for removal.
 ///
 /// Must run before the service first starts Vision, i.e. before any recognition.
 @MainActor

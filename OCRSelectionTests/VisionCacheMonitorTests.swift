@@ -44,6 +44,43 @@ struct VisionCacheMonitorTests {
         #expect(monitor.knownBundleCount == 3)
     }
 
+    @Test func purgedSkeletonsDoNotCount() async throws {
+        let root = try makeCache(bundles: 4)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let transport = StubTransport([])
+        let monitor = VisionCacheMonitor(cacheRoot: root, transport: transport)
+        await monitor.rebuild(reason: "launch")
+        #expect(monitor.knownBundleCount == 4)
+
+        // What the purge really does: files gone, folders left.
+        try purgeFiles(in: root)
+        #expect(monitor.countModelBundles() == 0)
+        transport.prewarmHook = { try? addBundles(4, to: root) }
+        await monitor.check()
+        #expect(transport.log == ["prewarm", "restart", "prewarm"])
+    }
+
+    @Test func purgeDuringACaptureDefersTheRestart() async throws {
+        let root = try makeCache(bundles: 3)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let transport = StubTransport([])
+        let monitor = VisionCacheMonitor(cacheRoot: root, transport: transport)
+        await monitor.rebuild(reason: "launch")
+        var recognizing = true
+        monitor.isRecognizing = { recognizing }
+
+        try purgeFiles(in: root)
+        await monitor.check()
+        #expect(transport.restarts.isEmpty)
+
+        // The capture's OCR recompiled the models; once it is done nothing is missing.
+        try addBundles(3, to: root)
+        recognizing = false
+        await monitor.check()
+        #expect(transport.restarts.isEmpty)
+        #expect(transport.log == ["prewarm"])
+    }
+
     @Test func extraModelIsNotAPurge() async throws {
         let root = try makeCache(bundles: 3)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -96,9 +133,7 @@ private func makeCache(bundles: Int, temporaryBundles: Int = 0) throws -> URL {
     let build = root.appending(path: "com.apple.e5rt.e5bundlecache/26B131")
     for index in 0..<temporaryBundles {
         let hash = build.appending(path: "TMP\(index)")
-        try FileManager.default.createDirectory(
-            at: hash.appending(path: "ABC.tmp.123_\(index).bundle"), withIntermediateDirectories: true
-        )
+        try writeModelFile(in: hash.appending(path: "ABC.tmp.123_\(index).bundle"))
     }
     return root
 }
@@ -107,9 +142,24 @@ private func addBundles(_ count: Int, to root: URL) throws {
     let build = root.appending(path: "com.apple.e5rt.e5bundlecache/26B131")
     for _ in 0..<count {
         let hash = UUID().uuidString
-        try FileManager.default.createDirectory(
-            at: build.appending(path: hash).appending(path: "\(hash).bundle/H16S.bundle"),
-            withIntermediateDirectories: true
-        )
+        try writeModelFile(in: build.appending(path: hash).appending(path: "\(hash).bundle"))
     }
+}
+
+/// What e5rt writes: `<hash>.bundle/H16S.bundle/H16S.e5` among others.
+private func writeModelFile(in bundle: URL) throws {
+    let directory = bundle.appending(path: "H16S.bundle")
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    try Data("model".utf8).write(to: directory.appending(path: "H16S.e5"))
+}
+
+/// What the purge leaves: the folders of every bundle, none of the files.
+private func purgeFiles(in root: URL) throws {
+    let fm = FileManager.default
+    let enumerator = fm.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey])
+    var files: [URL] = []
+    while let item = enumerator?.nextObject() as? URL {
+        if (try? item.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true { files.append(item) }
+    }
+    for file in files { try fm.removeItem(at: file) }
 }

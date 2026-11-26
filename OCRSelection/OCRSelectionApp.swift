@@ -85,6 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { await notifications.requestAuthorization() }
         // EXPERIMENT (see VisionCacheRelocation): keep Vision's cache out of ~/Library/Caches.
         VisionCacheRelocation.relocate(cacheRoot: visionCache.cacheRoot)
+        visionCache.isRecognizing = { [gate = coordinator.gate] in gate.isRecognizing }
         visionCache.start()
 
         // Fire on key-DOWN so the capture starts the instant the chord is recognised,
