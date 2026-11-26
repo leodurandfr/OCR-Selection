@@ -28,13 +28,20 @@ enum RecognizerService {
             log.notice("recognizer quitting on request")
             exit(0)
         case RecognizerProtocol.Op.prewarm:
-            guard let image = TextRecognition.prewarmImage() else {
+            let images = TextRecognition.prewarmImages()
+            guard let last = images.last else {
                 reply(to: message, on: peer, error: "prewarm image could not be drawn")
                 return
             }
             // Low priority: a rebuild after a purge must not compete with what the user
-            // is doing. A capture arriving meanwhile is handled by its own task.
-            Task(priority: .utility) { await run(image, replyingTo: message, on: peer, label: "prewarm") }
+            // is doing. A capture arriving meanwhile is handled by its own task. One image
+            // after the other, replying once with the last.
+            Task(priority: .utility) {
+                for image in images.dropLast() {
+                    _ = try? await TextRecognition.recognize(image)
+                }
+                await run(last, replyingTo: message, on: peer, label: "prewarm")
+            }
         case RecognizerProtocol.Op.recognize:
             guard let image = payload(from: message)?.makeImage() else {
                 reply(to: message, on: peer, error: "malformed image payload")
