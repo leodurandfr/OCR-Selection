@@ -31,6 +31,13 @@ struct OCRServiceTests {
         #expect(after != before)
     }
 
+    /// Recognition is limited to Latin-script languages, with the app's three first.
+    @Test(arguments: ["Café déjà été", "Año señal niño"])
+    func readsFrenchAndSpanishAccents(text: String) async throws {
+        let result = try await OCRService().recognizeText(in: try renderFixture(text: text))
+        #expect(result == text)
+    }
+
     @Test func rejoinsTextWrappedByItsColumn() async throws {
         defer { UserDefaults.standard.removeObject(forKey: AppSettings.preserveLineBreaksKey) }
         UserDefaults.standard.set(false, forKey: AppSettings.preserveLineBreaksKey)
