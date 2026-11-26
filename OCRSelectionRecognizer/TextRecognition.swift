@@ -26,19 +26,10 @@ enum TextRecognition {
         })
     }
 
-    /// What `prewarm` recognises: a line of Latin text, then a line of Arabic. Vision runs
-    /// one recognition model per script, compiled for the Neural Engine on first use: with
-    /// the text detector and the orientation model, the Latin line compiles three. Captures
-    /// were seen compiling a fourth, `cr_tr_model_arabic_v3` (13–16 s), as automatic
-    /// language detection tried Arabic on some line, so the prewarm compiles it too.
-    static func prewarmImages() -> [CGImage] {
-        [
-            render(lines: ["The quick brown fox jumps over the lazy dog"], width: 1400, height: 96),
-            render(lines: ["مرحبا بكم في التعرف على النص"], width: 1400, height: 96, fontName: "GeezaPro")
-        ].compactMap { $0 }
-    }
-
-    private static func render(lines: [String], width: Int, height: Int, fontName: String = "Helvetica") -> CGImage? {
+    /// A small line of text for `prewarm`: recognising it with the same request as a
+    /// capture makes Vision load (or recompile) the models a capture will need.
+    static func prewarmImage() -> CGImage? {
+        let width = 480, height = 96
         guard let context = CGContext(
             data: nil,
             width: width,
@@ -50,17 +41,14 @@ enum TextRecognition {
         ) else { return nil }
         context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        let font = CTFontCreateWithName(fontName as CFString, 40, nil)
+        let font = CTFontCreateWithName("Helvetica" as CFString, 40, nil)
         let attributes: [NSAttributedString.Key: Any] = [
             NSAttributedString.Key(kCTFontAttributeName as String): font,
             NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(red: 0, green: 0, blue: 0, alpha: 1)
         ]
-        for (index, text) in lines.enumerated() {
-            let ctLine = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
-            // Core Graphics counts y upwards: the first line is drawn at the top.
-            context.textPosition = CGPoint(x: 24, y: CGFloat(height - 66 - 100 * index))
-            CTLineDraw(ctLine, context)
-        }
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: "Warm up 2026", attributes: attributes))
+        context.textPosition = CGPoint(x: 24, y: 30)
+        CTLineDraw(line, context)
         return context.makeImage()
     }
 }

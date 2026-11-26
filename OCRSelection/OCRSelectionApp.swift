@@ -83,8 +83,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         PermissionPresenter.noteCurrentAccess()
 
         Task { await notifications.requestAuthorization() }
-        // EXPERIMENT (see VisionCacheRelocation): keep Vision's cache out of ~/Library/Caches.
-        VisionCacheRelocation.relocate(cacheRoot: visionCache.cacheRoot)
         visionCache.isRecognizing = { [gate = coordinator.gate] in gate.isRecognizing }
         visionCache.start()
 
