@@ -28,8 +28,20 @@ struct NotificationService: Notifying {
         let body = recognitionFailed
             ? String(localized: "Text recognition failed because macOS deleted the app's files to free up space. Try again in a minute, and free up disk space to prevent this.")
             : String(localized: "Text recognition was slow because the disk is almost full. Free up disk space to speed it up.")
-        await deliver(title: String(localized: "Disk almost full"), body: body)
+        await deliver(title: String(localized: "Disk almost full"), body: body, identifier: Self.diskIdentifier)
     }
+
+    func notifyDiskNearlyFullStillWorking() async {
+        await deliver(
+            title: String(localized: "Disk almost full"),
+            body: String(localized: "Text recognition is taking longer than usual because macOS deleted the app's files to free up space. It is still working and can take up to a minute or two. Free up disk space to prevent this."),
+            identifier: Self.diskIdentifier
+        )
+    }
+
+    /// Shared by the disk banners so the closing one replaces "still working" instead of
+    /// leaving it behind in Notification Center once the capture is over.
+    private static let diskIdentifier = "disk-nearly-full"
 
     func notifyFailure() async {
         await deliver(title: String(localized: "Capture failed"), body: "")
@@ -41,12 +53,12 @@ struct NotificationService: Notifying {
         NSSound.beep()
     }
 
-    private func deliver(title: String, body: String) async {
+    private func deliver(title: String, body: String, identifier: String = UUID().uuidString) async {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
+            identifier: identifier,
             content: content,
             trigger: nil
         )

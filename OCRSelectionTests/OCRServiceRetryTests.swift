@@ -100,6 +100,8 @@ final class StubTransport: RecognitionTransport {
     private(set) var prewarms = 0
     private(set) var log: [String] = []
     var prewarmHook: (() -> Void)?
+    /// Thrown by the next prewarms, one each, before they start succeeding.
+    var prewarmErrors: [RecognitionTransportError] = []
     var recognizeCalls: Int { images.count }
 
     init(_ results: [Result<RecognizedLayout, RecognitionTransportError>]) {
@@ -117,6 +119,7 @@ final class StubTransport: RecognitionTransport {
     func prewarm(timeout: Duration) async throws {
         prewarms += 1
         log.append("prewarm")
+        if !prewarmErrors.isEmpty { throw prewarmErrors.removeFirst() }
         prewarmHook?()
     }
 

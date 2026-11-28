@@ -15,7 +15,11 @@ import Foundation
 ///   `.bundle`s that still hold their files. When the count drops, the models were purged:
 ///   the service, which may hold them loaded and would then fail with `e5rtError … 13`, is
 ///   restarted and prewarmed again — but not while a capture's OCR is running, since that
-///   OCR is then recompiling the models itself and a restart would throw its work away.
+///   OCR is then recompiling the models itself and a restart would throw its work away;
+/// - **retries a failed prewarm** after a growing delay. Below ~15 GB free, APFS can purge
+///   the model while it is being compiled, and the prewarm fails with `e5rtError … 13`.
+///   Without a retry nothing rebuilt the models until the next capture, which then paid the
+///   whole compile (and often failed the same way) while the icon pulsed.
 ///
 /// Events are coalesced (a purge or a compile touches many folders at once) and ignored
 /// while a rebuild runs, since the rebuild itself writes the cache. None of this drives
@@ -36,6 +40,11 @@ final class VisionCacheMonitor: VisionModelCaching {
     private let pollInterval: TimeInterval
     /// Finished model bundles last seen after a successful prewarm or check.
     private(set) var knownBundleCount = 0
+    /// Waits before each retry of a failed prewarm; past the last one it gives up until the
+    /// next purge or launch, rather than compiling every few minutes on a disk that stays full.
+    private let prewarmRetryDelays: [Duration]
+    private var failedPrewarms = 0
+    private var retry: Task<Void, Never>?
 
     /// `cacheRoot` is `~/Library/Caches/<service bundle ID>`.
     init(
@@ -43,9 +52,11 @@ final class VisionCacheMonitor: VisionModelCaching {
         transport: any RecognitionTransport,
         coalescingDelay: Duration = .seconds(3),
         prewarmTimeout: Duration = .seconds(180),
-        pollInterval: TimeInterval = 120
+        pollInterval: TimeInterval = 120,
+        prewarmRetryDelays: [Duration] = [.seconds(30), .seconds(60), .seconds(120), .seconds(300), .seconds(600)]
     ) {
         self.pollInterval = pollInterval
+        self.prewarmRetryDelays = prewarmRetryDelays
         self.cacheRoot = cacheRoot
         self.transport = transport
         self.coalescingDelay = coalescingDelay
@@ -78,6 +89,8 @@ final class VisionCacheMonitor: VisionModelCaching {
 
     func stop() {
         pendingCheck?.cancel()
+        retry?.cancel()
+        retry = nil
         poll?.invalidate()
         poll = nil
         sources.values.forEach { $0.cancel() }
@@ -94,6 +107,9 @@ final class VisionCacheMonitor: VisionModelCaching {
         do {
             try await transport.prewarm(timeout: prewarmTimeout)
             knownBundleCount = countModelBundles()
+            failedPrewarms = 0
+            retry?.cancel()
+            retry = nil
             PerfLog.logger.notice(
                 """
                 vision model ready reason=\(reason, privacy: .public) \
@@ -102,11 +118,10 @@ final class VisionCacheMonitor: VisionModelCaching {
                 """
             )
         } catch {
-            // Not retried in a loop: the next capture retries on its own, and the next
-            // cache change triggers another check.
             knownBundleCount = countModelBundles()
             PerfLog.logger.error("vision prewarm failed reason=\(reason, privacy: .public): \(String(describing: error), privacy: .public)")
             await transport.restartIfFailed(reason: "prewarm failed")
+            scheduleRetry()
         }
         rearm()
     }
@@ -132,6 +147,36 @@ final class VisionCacheMonitor: VisionModelCaching {
             // A capture in another language can compile one more model: it is the new norm.
             knownBundleCount = count
         }
+    }
+
+    /// Retries a failed prewarm later, with a longer wait each time: back to back, it would
+    /// fall into the same purge.
+    private func scheduleRetry() {
+        guard failedPrewarms < prewarmRetryDelays.count else {
+            PerfLog.logger.error("vision prewarm gave up after \(self.failedPrewarms, privacy: .public) retries")
+            return
+        }
+        let delay = prewarmRetryDelays[failedPrewarms]
+        failedPrewarms += 1
+        PerfLog.logger.notice("vision prewarm retry \(self.failedPrewarms, privacy: .public) in \(String(format: "%.0f", delay.timeInterval), privacy: .public)s")
+        retry?.cancel()
+        retry = Task { [weak self] in
+            do { try await Task.sleep(for: delay) } catch { return }
+            await self?.retryPrewarm()
+        }
+    }
+
+    private func retryPrewarm() async {
+        retry = nil
+        if isRecognizing() {
+            // A capture is compiling the models itself: try again once it is done.
+            retry = Task { [weak self] in
+                do { try await Task.sleep(for: .seconds(10)) } catch { return }
+                await self?.retryPrewarm()
+            }
+            return
+        }
+        await rebuild(reason: "retry")
     }
 
     var knownModelCount: Int { knownBundleCount }

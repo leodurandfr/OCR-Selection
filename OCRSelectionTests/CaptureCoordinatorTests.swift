@@ -137,6 +137,62 @@ struct CaptureCoordinatorTests {
         #expect(env.notifications.events == [.success("hello"), .success("hello")])
     }
 
+    @Test func longOCROnNearlyFullDiskWarnsWhileStillRunning() async {
+        let recognizer = SuspendedRecognizer()
+        let env = Env(screenCapture: StubScreenCapture(.success(dummyImage())), recognizer: recognizer, diskNearlyFull: true, slowOCRMilliseconds: 0)
+        // First OCR of the process: it compiles the model anyway, so no warning.
+        let first = Task { await env.coordinator.run() }
+        while !recognizer.isWaiting { await Task.yield() }
+        recognizer.finish(with: .success("one"))
+        await first.value
+        #expect(env.notifications.events == [.success("one")])
+
+        let second = Task { await env.coordinator.run() }
+        while !env.notifications.events.contains(.diskStillWorking) { await Task.yield() }
+        // Warned while the icon is still pulsing, before any text has landed.
+        #expect(env.coordinator.gate.isRecognizing)
+        #expect(env.pasteboard.copied == ["one"])
+
+        recognizer.finish(with: .success("two"))
+        await second.value
+        // The closing disk banner replaces the "still working" one.
+        #expect(env.notifications.events == [
+            .success("one"), .diskStillWorking, .success("two"), .diskNearlyFull(recognitionFailed: false)
+        ])
+    }
+
+    @Test func longOCRThatFailsAfterWarningReportsTheFailure() async {
+        struct Boom: Error {}
+        let recognizer = SuspendedRecognizer()
+        let env = Env(screenCapture: StubScreenCapture(.success(dummyImage())), recognizer: recognizer, diskNearlyFull: true, slowOCRMilliseconds: 0)
+        let first = Task { await env.coordinator.run() }
+        while !recognizer.isWaiting { await Task.yield() }
+        recognizer.finish(with: .success("one"))
+        await first.value
+
+        let second = Task { await env.coordinator.run() }
+        while !env.notifications.events.contains(.diskStillWorking) { await Task.yield() }
+        recognizer.finish(with: .failure(OCRError.visionFailed(Boom())))
+        await second.value
+        #expect(env.notifications.events == [
+            .success("one"), .diskStillWorking, .diskNearlyFull(recognitionFailed: true)
+        ])
+        #expect(!env.coordinator.gate.isRecognizing)
+    }
+
+    @Test func longOCRWithFreeSpaceDoesNotWarnWhileRunning() async {
+        let recognizer = SuspendedRecognizer()
+        let env = Env(screenCapture: StubScreenCapture(.success(dummyImage())), recognizer: recognizer, slowOCRMilliseconds: 0)
+        for text in ["one", "two"] {
+            let run = Task { await env.coordinator.run() }
+            while !recognizer.isWaiting { await Task.yield() }
+            try? await Task.sleep(for: .milliseconds(50))
+            recognizer.finish(with: .success(text))
+            await run.value
+        }
+        #expect(env.notifications.events == [.success("one"), .success("two")])
+    }
+
     @Test func recognizingStateCoversOCROnly() async {
         let capture = SuspendedScreenCapture()
         let recognizer = ProbingRecognizer()
@@ -263,6 +319,22 @@ private struct Env {
     func recognizeText(in image: CGImage) async throws -> String { try result.get() }
 }
 
+/// Holds `recognizeText` open until the test calls `finish(with:)`: a long OCR.
+@MainActor private final class SuspendedRecognizer: TextRecognizing {
+    private var continuation: CheckedContinuation<String, Error>?
+    var isWaiting: Bool { continuation != nil }
+
+    func recognizeText(in image: CGImage) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation = $0 }
+    }
+
+    func finish(with result: Result<String, Error>) {
+        let pending = continuation
+        continuation = nil
+        pending?.resume(with: result)
+    }
+}
+
 /// Records what `probe` reports while OCR is running.
 @MainActor private final class ProbingRecognizer: TextRecognizing {
     var probe: () -> Bool = { false }
@@ -284,7 +356,7 @@ private struct Env {
 }
 
 @MainActor private final class SpyNotifications: Notifying {
-    enum Event: Equatable { case success(String), noText, ocrFailed, diskNearlyFull(recognitionFailed: Bool), failure, busy }
+    enum Event: Equatable { case success(String), noText, ocrFailed, diskNearlyFull(recognitionFailed: Bool), diskStillWorking, failure, busy }
     var events: [Event] = []
     func notifySuccess(preview text: String) async { events.append(.success(text)) }
     func notifyNoText() async { events.append(.noText) }
@@ -292,6 +364,7 @@ private struct Env {
     func notifyDiskNearlyFull(recognitionFailed: Bool) async {
         events.append(.diskNearlyFull(recognitionFailed: recognitionFailed))
     }
+    func notifyDiskNearlyFullStillWorking() async { events.append(.diskStillWorking) }
     func notifyFailure() async { events.append(.failure) }
     func notifyBusy() { events.append(.busy) }
 }

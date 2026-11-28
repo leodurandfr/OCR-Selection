@@ -104,6 +104,55 @@ struct VisionCacheMonitorTests {
         #expect(monitor.knownBundleCount == 2)
     }
 
+    @Test func failedPrewarmIsRetriedLater() async throws {
+        let root = try makeCache(bundles: 0)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let transport = StubTransport([])
+        // Purged while compiling, as on a nearly full disk; the retry compiles the models.
+        transport.prewarmErrors = [.vision("e5rtError 13")]
+        transport.prewarmHook = { try? addBundles(3, to: root) }
+        let monitor = VisionCacheMonitor(cacheRoot: root, transport: transport, prewarmRetryDelays: [.milliseconds(10)])
+        await monitor.rebuild(reason: "purge")
+        #expect(monitor.knownBundleCount == 0)
+
+        let deadline = ContinuousClock.now + .seconds(5)
+        while monitor.knownBundleCount < 3, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(transport.prewarms == 2)
+        #expect(transport.restarts == ["prewarm failed"])
+        #expect(monitor.knownBundleCount == 3)
+    }
+
+    @Test func prewarmRetriesGiveUpAfterTheLastDelay() async throws {
+        let root = try makeCache(bundles: 0)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let transport = StubTransport([])
+        transport.prewarmErrors = Array(repeating: .vision("e5rtError 13"), count: 10)
+        let monitor = VisionCacheMonitor(cacheRoot: root, transport: transport, prewarmRetryDelays: [.milliseconds(5), .milliseconds(5)])
+        await monitor.rebuild(reason: "launch")
+        let deadline = ContinuousClock.now + .seconds(5)
+        while transport.prewarms < 3, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        try await Task.sleep(for: .milliseconds(100))
+        // The first attempt and one retry per delay, then nothing more.
+        #expect(transport.prewarms == 3)
+    }
+
+    @Test func prewarmRetryWaitsForARunningCapture() async throws {
+        let root = try makeCache(bundles: 0)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let transport = StubTransport([])
+        transport.prewarmErrors = [.vision("e5rtError 13")]
+        let monitor = VisionCacheMonitor(cacheRoot: root, transport: transport, prewarmRetryDelays: [.milliseconds(5)])
+        monitor.isRecognizing = { true }
+        await monitor.rebuild(reason: "launch")
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(transport.prewarms == 1)
+        monitor.stop()
+    }
+
     @Test func fileSystemEventsTriggerACoalescedCheck() async throws {
         let root = try makeCache(bundles: 2)
         defer { try? FileManager.default.removeItem(at: root) }
