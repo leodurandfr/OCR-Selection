@@ -26,6 +26,9 @@ import CoreGraphics
     func notifyOCRFailed() async
     /// OCR failed or was very slow while the disk was nearly full (see `DiskSpaceService`).
     func notifyDiskNearlyFull(recognitionFailed: Bool) async
+    /// OCR is still running, slowed by a nearly full disk: posted while the icon pulses so
+    /// a long recompile doesn't look like a hang. The closing disk banner replaces it.
+    func notifyDiskNearlyFullStillWorking() async
     func notifyFailure() async
     /// A capture request arrived while one was still running and was dropped.
     func notifyBusy()

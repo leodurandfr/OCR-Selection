@@ -48,7 +48,7 @@ struct CaptureCoordinator {
             let isFirstOCR = !gate.hasRecognized
             let knownModels = modelCache?.knownModelCount
             let ocrStart = clock.now
-            let text = try await recognize(image)
+            let (text, warnedDuringOCR) = try await recognize(image, watchDisk: !isFirstOCR)
             let ocrMs = PerfLog.milliseconds(clock.now - ocrStart)
 
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -79,8 +79,11 @@ struct CaptureCoordinator {
             // install or rebuild, and blaming the disk for it would be a false alarm.
             // Nor when the slow OCR compiled a model Vision had never needed before (text in
             // another language): the cache grew past anything seen, so nothing was purged.
+            // Already warned while it ran: the closing banner replaces the "still working" one
+            // (same identifier), so it doesn't stay in Notification Center after the text landed.
             let compiledNewModel = knownModels.map { (modelCache?.currentModelCount() ?? 0) > $0 } ?? false
-            if ocrMs > slowOCRMilliseconds, !isFirstOCR, !compiledNewModel, diskSpace.isNearlyFull() {
+            if warnedDuringOCR
+                || (ocrMs > slowOCRMilliseconds && !isFirstOCR && !compiledNewModel && diskSpace.isNearlyFull()) {
                 await notifications.notifyDiskNearlyFull(recognitionFailed: false)
             }
         } catch CaptureError.userCancelled {
@@ -108,13 +111,34 @@ struct CaptureCoordinator {
 
     /// The menu-bar pulse covers OCR only: not the selection, where the user is the
     /// one working, nor the permission alert, where the app is waiting on them.
-    private func recognize(_ image: CGImage) async throws -> String {
+    ///
+    /// With `watchDisk`, an OCR still running after `slowOCRMilliseconds` on a nearly full
+    /// disk posts a "still working" warning right away. Recompiling a purged model can keep
+    /// the icon pulsing for a minute or more (up to two 90 s attempts), and with no word
+    /// until the end that looked like the app had hung. Returns whether it warned.
+    private func recognize(_ image: CGImage, watchDisk: Bool) async throws -> (String, warned: Bool) {
         gate.isRecognizing = true
         defer {
             gate.isRecognizing = false
             gate.hasRecognized = true
         }
-        return try await ocr.recognizeText(in: image)
+        let watchdog: Task<Bool, Never>? = watchDisk ? Task { [slowOCRMilliseconds, diskSpace, notifications] in
+            try? await Task.sleep(for: .milliseconds(max(0, slowOCRMilliseconds)))
+            guard !Task.isCancelled, diskSpace.isNearlyFull() else { return false }
+            PerfLog.logger.notice("OCR still running after \(String(format: "%.0f", slowOCRMilliseconds), privacy: .public)ms on a nearly full disk: warning")
+            await notifications.notifyDiskNearlyFullStillWorking()
+            return true
+        } : nil
+        do {
+            let text = try await ocr.recognizeText(in: image)
+            watchdog?.cancel()
+            return (text, await watchdog?.value ?? false)
+        } catch {
+            watchdog?.cancel()
+            // A failure after the warning is reported by the caller, whose banner replaces it.
+            _ = await watchdog?.value
+            throw error
+        }
     }
 
     func recopy(_ text: String) async {

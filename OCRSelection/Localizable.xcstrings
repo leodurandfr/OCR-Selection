@@ -843,6 +843,28 @@
         }
       }
     },
+    "Text recognition is taking longer than usual because macOS deleted the app's files to free up space. It is still working and can take up to a minute or two. Free up disk space to prevent this." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text recognition is taking longer than usual because macOS deleted the app's files to free up space. It is still working and can take up to a minute or two. Free up disk space to prevent this."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El reconocimiento de texto está tardando más de lo habitual porque macOS eliminó los archivos de la app para liberar espacio. Sigue trabajando y puede tardar uno o dos minutos. Libera espacio en disco para evitarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La reconnaissance du texte prend plus de temps que d'habitude car macOS a supprimé les fichiers de l'app pour libérer de l'espace. Elle continue et peut prendre une à deux minutes. Libérez de l'espace disque pour éviter cela."
+          }
+        }
+      }
+    },
     "Text recognition was slow because the disk is almost full. Free up disk space to speed it up." : {
       "localizations" : {
         "en" : {
